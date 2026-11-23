@@ -155,6 +155,8 @@ Discussion 回答 **Why**，不重复 **What**。选 2–3 个核心模块，用
 
 已知的局限：脚本不识别 "Tables 8 and 9" 这类合并引用，会误报，需要人工核对位置。
 
+> 本仓库提供了同类工具：`skills/top-tier-paper-writing/scripts/floatcheck.sty` + `check_layout.py`（用法见 SKILL.md 第七节）。它记录的是每一次 `\ref`/`\cref` 调用，因此 "Tables~\ref{a} and~\ref{b}" 这类合并引用也能正确识别。
+
 ### 3. 修复浮动体位置的手段（按优先级）
 
 1. **移动浮动体的定义位置**（源码中的 `\begin{table}`）：在当前栏构建过程中定义的 `[!t]` 浮动体，常常会被放到当前栏或下一栏的顶部。

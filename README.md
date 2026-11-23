@@ -1,6 +1,6 @@
 # 通用计算机顶会/顶刊论文写作规范与学术绘图 Agent Skill (Best-PaperWriting)
 
-[![Skill: top-tier-paper-writing](https://img.shields.io/badge/Agent%20Skill-top--tier--paper--writing-blueviolet.svg)](.agent/skills/top-tier-paper-writing/SKILL.md)
+[![Skill: top-tier-paper-writing](https://img.shields.io/badge/Agent%20Skill-top--tier--paper--writing-blueviolet.svg)](skills/top-tier-paper-writing/SKILL.md)
 [![Domain: Computer Science](https://img.shields.io/badge/Domain-Computer%20Science%20(AI%20%7C%20Security%20%7C%20Systems)-blue.svg)]()
 [![Target: Top-tier Conf & Trans](https://img.shields.io/badge/Target-CCF--A%20%2F%20IEEE%20Trans%20%2F%20ACM-brightgreen.svg)]()
 [![Aesthetics: Okabe-Ito & Modern Minimal](https://img.shields.io/badge/Aesthetics-Okabe--Ito%20%7C%20Modern%20Minimal-orange.svg)]()
@@ -20,19 +20,25 @@
 
 ## 一、Skill 架构与工程目录结构
 
-本项目包含完整开箱即用的 Agent Skill 结构，位于 `.agent/skills/top-tier-paper-writing/` 与 `skills/top-tier-paper-writing/`：
+本项目包含完整开箱即用的 Agent Skill 结构。**唯一的源目录是 `skills/top-tier-paper-writing/`**；`.agent/skills/top-tier-paper-writing/` 是供 Antigravity 等读取 `.agent/` 的工具使用的镜像，不要直接修改，改完源目录后运行：
+
+```bash
+python3 tools/sync_skill.py          # 把 skills/ 同步到 .agent/skills/
+python3 tools/sync_skill.py --check  # 只检查两处是否一致（不一致时退出码为 1）
+```
 
 ```
-.agent/skills/top-tier-paper-writing/
+skills/top-tier-paper-writing/
 ├── SKILL.md                          # Skill 核心指导手册（Agent 提示词与规范总览）
 ├── EVOLUTION_LOG.md                  # Skill 自进化历史与知识沉淀日志 [新]
 ├── scripts/                          # 工业级学术绘图、排版与智能进化自动化脚本
-│   ├── domain_adapter.py             # 领域自适应对齐引擎 (自动识别领域、检索 arXiv 标杆并微调) [新]
-│   ├── self_evolve.py                # 技能自进化引擎 (解析新文献、萃取高阶因果句式并热更新) [新]
+│   ├── domain_adapter.py             # 领域识别 (关键词打分 + 置信度) 与配置生成，可选检索 arXiv 同主题论文
+│   ├── self_evolve.py                # 句式萃取 (清洗 OCR 残留、模式匹配候选句、预览后 --apply 写入)
 │   ├── gen_architecture_diagram.py  # 架构图生成脚本 (Modern Minimal + 带圈编号 ①–⑥ + 矢量 PDF)
 │   ├── plot_data_curves.py           # 收敛曲线绘制脚本 (Okabe-Ito 色盲安全 + 阴影方差 + IEEE 单栏)
 │   ├── plot_bar_ablation.py          # 消融实验分组柱状图脚本 (误差棒 + 精准百分比标注)
-│   └── check_layout.py               # 双栏排版浮动体错位与版面空洞自动检查工具
+│   ├── floatcheck.sty                # 诊断编译用宏包：记录浮动体与 \ref 的页码和坐标
+│   └── check_layout.py               # 读取 floatcheck 记录，检查浮动体三大铁律与日志中的版面警告
 ├── references/                       # 视觉规范、分类库与学术句式参考基准
 │   ├── domain_taxonomies.json        # 计算机各大顶级领域 (安全/系统/ML/NLP) 结构要求与图表偏好 [新]
 │   ├── plotting_style_guide.md       # IEEE/ACM 物理尺寸、字号层级、色板十六进制速查
@@ -40,6 +46,14 @@
 └── templates/                        # 交互与转换模板
     └── prompt_templates.md           # “实验表格 -> 深度归因正文” 与 “架构图设计” Prompt 模板
 ```
+
+### 配套长文档（仓库根目录）
+
+| 文件 | 内容 |
+| :--- | :--- |
+| `academic_paper_writing_guide.md` | 通用写作规范全文：各章节宏观结构与段落解剖、句子微雕、图表与排版、参考文献核验 |
+| `paper_writing_lessons_lever_sp.md` | LEVER / Provenance Gate（IEEE S&P 投稿版与 arXiv 版）修改过程中的经验总结 |
+| `paper_writing_lessons_qedfl_tcc.md` | QEDFL（IEEE TCC 期刊稿，IEEEtran compsoc）修改、排版与投稿经验总结 |
 
 ---
 
@@ -51,7 +65,7 @@
 +----------------------------------------------------------------------------------------------------+
 | Phase 0: 领域自适应识别与微调对齐 (Adaptive Domain Profiling) [自适应模块]                          |
 |   - 扫描论文 Idea/数据/关键词，自动识别所属计算机领域 (安全S&P / 系统OSDI / 机器学习NeurIPS / 网络 / NLP) |
-|   - 自动联网检索 arXiv / 顶会数据库，获取目标领域近 1-2 年高水平标杆文献                             |
+|   - 可选检索 arXiv（近 2 年、按相关度排序；arXiv 无引用数据），获取目标领域同主题标杆文献            |
 |   - 提取领域专属写作结构 (如安全 Threat Model, 系统 Testbed)、专用图表偏好与归因术语库，生成会话微调 Profile  |
 |                                                                                                    |
 | Phase 1: 架构与机制可视化 (Architecture & Diagrams)                                                |
@@ -74,12 +88,12 @@
 |                                                                                                    |
 | Phase 5: 双栏 LaTeX 排版与版面精修 (Typesetting & Layout)                                          |
 |   - 严守浮动体“首次引用同页前置”三大铁律                                                            |
-|   - 运行检查脚本排查落后浮动体，四级调试阶梯调位，消除段末孤行实现等长空间补偿                     |
+|   - floatcheck 诊断编译 + check_layout.py 排查落后浮动体，四级调试阶梯调位，人工消除段末孤行      |
 |                                                                                                    |
 | Phase 6: 自主文献检索与 Skill 持续自进化 (Self-Evolution & Ingestion) [自进化模块]                 |
-|   - 自动扫描解析新文献 (MinerU Markdown / arXiv 最新录用论文)                                       |
-|   - 自动萃取高阶因果机理归因表达 (Causal Patterns) 与顶会批判性转折句                                |
-|   - 热补丁 (Hot-patch) 沉淀进机制句式库，记录进化日志 EVOLUTION_LOG.md，实现技能库“越用越强”       |
+|   - 解析新文献 (MinerU Markdown 全文 / arXiv 最新论文摘要)                                          |
+|   - 关键词模式匹配萃取候选因果归因句与批判性转折句，先预览、人工审核                                 |
+|   - 审核后 --apply 追加进机制句式库，并记录进化日志 EVOLUTION_LOG.md                                |
 +----------------------------------------------------------------------------------------------------+
 ```
 
@@ -270,6 +284,14 @@ OKABE_ITO = {
    - 优先级 3: 微调逻辑段落先后顺序；
    - 优先级 4: 增补极具实质信息增量的解释长句；
    - **消除段末孤行（Widows/Orphans）**：微调删减段末仅剩 1–2 个单词的行尾，消除 3 个孤行可拉回 3 行正文高度，化解浮动体跨页与振荡。
+3. **自动检查（floatcheck + check_layout.py）**：
+   ```bash
+   cp skills/top-tier-paper-writing/scripts/floatcheck.sty /path/to/paper/
+   cd /path/to/paper
+   pdflatex -jobname=main "\RequirePackage{floatcheck}\input{main}"   # 运行两次，无需改源码
+   python3 /path/to/Best-PaperWriting/skills/top-tier-paper-writing/scripts/check_layout.py main.aux
+   ```
+   `FAIL` 表示违反铁律 1 或 3，`WARN` 表示同页但阅读顺序靠后或从未被引用；栏底空白从日志中的 `Underfull \vbox` 推断。段末孤行无法从日志检测，仍需人工检查 PDF。
 
 ---
 
@@ -281,26 +303,28 @@ OKABE_ITO = {
 根据用户的具体论文方向，自动定制结构、图表与机理归因要求：
 - **运行命令**：
   ```bash
-  python3 .agent/skills/top-tier-paper-writing/scripts/domain_adapter.py --file idea.md --output session_domain_profile.json
-  # 或直接传文本/关键词
-  python3 .agent/skills/top-tier-paper-writing/scripts/domain_adapter.py --text "Zero-knowledge verifiable defense against backdoor poisoning in edge FL"
+  python3 skills/top-tier-paper-writing/scripts/domain_adapter.py --file idea.md --output session_domain_profile.json
+  # 或直接传文本/关键词；领域识别不确定时用 --domain 指定，离线时加 --offline
+  python3 skills/top-tier-paper-writing/scripts/domain_adapter.py --text "Zero-knowledge verifiable defense against backdoor poisoning in edge FL"
   ```
-- **自动化工作逻辑**：
-  1. **领域与赛道识别**：自动匹配所属领域（安全隐私 `security_privacy`、分布式系统 `distributed_systems`、机器学习/联邦 `machine_learning_fl`、大语言模型 `nlp_llm`）；
-  2. **顶会标杆检索**：自动调用 arXiv API 检索该领域最近 1–2 年的高引/Spotlight 论文，解析其结构范式；
+- **工作逻辑**：
+  1. **领域与赛道识别**：按关键词整词匹配打分并报告置信度，匹配所属领域（安全隐私 `security_privacy`、分布式系统 `distributed_systems`、机器学习/联邦 `machine_learning_fl`、大语言模型 `nlp_llm`）；
+  2. **标杆文献检索**：调用 arXiv API 检索最近 2 年按相关度排序的同主题论文（arXiv 不提供引用数，不是“高引”筛选）；无任何关键词匹配时不会猜测，而是要求 `--domain`；
   3. **动态规则注入**：生成 `session_domain_profile.json`，在写作时自动补齐该领域强制章节（如安全必备的 *Threat Model*，系统必备的 *Hardware Testbed & Tail Latency*）与最优图表组合（如系统 CDF 图、安全攻击预算折线图）。
 
 ### 2. 文献检索与 Skill 持续自进化模块（Skill Self-Evolution）
-让 Skill 能够像优秀研究者一样终身自主学习前沿顶会的写作与绘图精华：
+让句式库随用户提供的优秀范文持续扩充。这是关键词模式匹配，不是语义理解，所有候选都需人工审核：
 - **运行命令**：
   ```bash
-  # 方式 A：解析本地优质顶会论文 (如 MinerU 解析出的 Markdown)
-  python3 .agent/skills/top-tier-paper-writing/scripts/self_evolve.py --file /path/to/mineru_paper.md
+  # 方式 A：解析本地优质顶会论文 (如 MinerU 解析出的 Markdown)；默认只预览候选句
+  python3 skills/top-tier-paper-writing/scripts/self_evolve.py --file /path/to/mineru_paper.md
+  # 审核无误后写入句式库与进化日志
+  python3 skills/top-tier-paper-writing/scripts/self_evolve.py --file /path/to/mineru_paper.md --apply
 
-  # 方式 B：指定前沿主题自动在线检索 arXiv 录用论文自进化
-  python3 .agent/skills/top-tier-paper-writing/scripts/self_evolve.py --arxiv_query "adversarial differential privacy" --max_papers 3
+  # 方式 B：检索 arXiv 最新论文（API 只返回标题与摘要，候选句较少）
+  python3 skills/top-tier-paper-writing/scripts/self_evolve.py --arxiv_query "adversarial differential privacy" --max_papers 3
   ```
-- **自动化进化逻辑**：
-  1. **模式萃取**：智能扫描论文全文，精准萃取因果机理归因句（Causal Attributions）、文献综述批判转折句（Rhetorical Transitions）以及图表表述手法；
-  2. **知识库热更新**：自动将提炼的高阶句式沉淀追加到 `references/mechanism_sentence_bank.md`；
-  3. **进化足迹留痕**：在 `EVOLUTION_LOG.md` 中记录时间戳、输入来源与新增能力，实现技能库**“越用越强、自我进化”**。
+- **工作逻辑**：
+  1. **模式萃取**：先清洗 `<sub>` 等 OCR 标签、公式与引用标号并按句切分，再用关键词模式筛出因果机理归因句（Causal Attributions）、文献综述批判转折句（Rhetorical Transitions）以及图表表述手法；
+  2. **审核后写入**：与句式库已有句子去重，丢弃含乱码的句子；加 `--apply` 后才追加到 `references/mechanism_sentence_bank.md`；
+  3. **进化足迹留痕**：在 `EVOLUTION_LOG.md` 中记录时间戳、输入来源与新增数量。

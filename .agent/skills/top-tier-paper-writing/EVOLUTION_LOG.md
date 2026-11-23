@@ -1,6 +1,8 @@
 # Skill Evolution & Knowledge Growth Log
 
 > This log tracks self-evolution events of top-tier-paper-writing skill.
+>
+> 2026-11-23: the FedPE entry below originally contained MinerU OCR artifacts (`<sub>` tags, dropped letters); it was cleaned by hand, and `self_evolve.py` now strips such artifacts and previews candidates before writing (`--apply`).
 
 
 ### [Evolution Event: 2026-11-23 02:25:49]
@@ -10,7 +12,7 @@
 - **Extracted Figure Phrasings**: 0
 
 **Sample Discovered Expressions:**
-- *Causal*: "Both ex<sub>p</sub>erimental confi<sub>g</sub>urations indicate that FedPE exhibits enhanced <sub>g</sub>eneralization caabilities as the client scale ex ands attributable to PKM mechanism’s efectiveness in su<sub>pp</sub>ressin<sub>g</sub> feature overwritin<sub>g</sub>."
+- *Causal*: "Both experimental configurations indicate that FedPE exhibits enhanced generalization capabilities as the client scale expands, attributable to PKM mechanism's effectiveness in suppressing feature overwriting."
 
 ---
 

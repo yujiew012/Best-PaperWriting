@@ -25,7 +25,7 @@ description: >-
 +----------------------------------------------------------------------------------------------------+
 | Phase 0: 领域自适应识别与微调对齐 (Adaptive Domain Profiling) [自适应模块]                          |
 |   - 扫描论文 Idea/数据/关键词，自动识别所属计算机领域 (安全S&P / 系统OSDI / 机器学习NeurIPS / 网络 / NLP) |
-|   - 自动检索 arXiv / 顶会数据库，获取目标领域近 1-2 年高水平标杆文献                                 |
+|   - 可选检索 arXiv（近 2 年、按相关度排序；arXiv 无引用数据），获取目标领域同主题标杆文献            |
 |   - 提取领域专属写作结构 (如安全 Threat Model, 系统 Testbed)、专用图表偏好与归因术语库，生成会话微调 Profile  |
 |                                                                                                    |
 | Phase 1: 架构与机制可视化 (Architecture & Diagrams)                                                |
@@ -35,7 +35,7 @@ description: >-
 |                                                                                                    |
 | Phase 2: 实验数据可视化 (Data-Driven Visualizations)                                               |
 |   - 数据维度匹配图表类型：多随机种子曲线 (带阴影方差) / 分组消融柱状图 / 跨架构方差对比图 / t-SNE 分布图  |
-|   - 强制适配单/双栏排版尺寸 (3.3 in vs 6.8 in) 与 Okabe-Ito 色盲友好调色板                           |
+|   - 强制适配单/双栏排版尺寸 (3.4 in vs 6.9 in) 与 Okabe-Ito 色盲友好调色板                           |
 |   - 纯脚本自动化生成矢量图 (.pdf) 与预览图 (.png)                                                  |
 |                                                                                                    |
 | Phase 3: 图表 Caption 规范化 (Caption Crafting)                                                    |
@@ -49,12 +49,12 @@ description: >-
 |                                                                                                    |
 | Phase 5: 双栏 LaTeX 排版与版面精修 (Typesetting & Layout)                                          |
 |   - 严守浮动体“首次引用同页前置”三大铁律                                                            |
-|   - 运行检查脚本排查落后浮动体，四级调试阶梯调位，消除段末孤行实现等长空间补偿                     |
+|   - floatcheck 诊断编译 + check_layout.py 排查落后浮动体，四级调试阶梯调位，人工消除段末孤行      |
 |                                                                                                    |
 | Phase 6: 自主文献检索与 Skill 持续自进化 (Self-Evolution & Ingestion) [自进化模块]                 |
-|   - 自动扫描解析新文献 (MinerU Markdown / arXiv 最新录用论文)                                       |
-|   - 自动萃取高阶因果机理归因表达 (Causal Patterns) 与顶会批判性转折句                                |
-|   - 热补丁 (Hot-patch) 沉淀进机制句式库，记录进化日志 EVOLUTION_LOG.md，实现技能库“越用越强”       |
+|   - 解析新文献 (MinerU Markdown 全文 / arXiv 最新论文摘要)                                          |
+|   - 关键词模式匹配萃取候选因果归因句与批判性转折句，先预览、人工审核                                 |
+|   - 审核后 --apply 追加进机制句式库，并记录进化日志 EVOLUTION_LOG.md                                |
 +----------------------------------------------------------------------------------------------------+
 ```
 
@@ -283,18 +283,33 @@ plt.rcParams['axes.prop_cycle'] = plt.cycler(color=[
    - 优先级 4: 增补极具实质信息增量的解释长句；
    - **消除段末孤行（Widows/Orphans）**：微调删减段末仅剩 1–2 个单词的行尾，消除 3 个孤行可拉回 3 行正文高度，化解浮动体跨页与振荡。
 
+3. **浮动体检查的具体用法**：
+
+```bash
+cp scripts/floatcheck.sty /path/to/paper/      # 放到 main.tex 旁边
+cd /path/to/paper
+# 诊断编译（无需修改源码；运行两次让位置稳定）
+pdflatex -jobname=main "\RequirePackage{floatcheck}\input{main}"
+pdflatex -jobname=main "\RequirePackage{floatcheck}\input{main}"
+python3 /path/to/skill/scripts/check_layout.py main.aux
+```
+
+- 输出中 `FAIL` 为违反铁律（浮动体落后于首次引用页、`figure*` 定义太晚），`WARN` 为同页但阅读顺序靠后、从未被引用等；
+- 每次修改正文前后各跑一次并对比，**任何改动都不能让 FAIL 变多**；
+- 也可以把 `\usepackage{floatcheck}` 作为最后一个宏包加入导言区；该宏包只写入 whatsit，不改变版面。
+
 ---
 
 ## 八、配套工具脚本使用说明（Scripts & References）
 
 本 Skill 目录下附带了一整套可直接执行的生产级绘图、排版与智能进化工具：
 
-- `scripts/domain_adapter.py`：领域自适应对齐引擎（自动识别研究领域、自动联网检索 arXiv 标杆文献、生成专属 `session_domain_profile.json`）；
-- `scripts/self_evolve.py`：技能自进化引擎（解析本地 MinerU Markdown 或检索 arXiv 最新文献，萃取高阶因果句式与批判转折，热更新句式库并记录 `EVOLUTION_LOG.md`）；
+- `scripts/domain_adapter.py`：领域识别与配置生成（按 `domain_taxonomies.json` 关键词整词匹配打分并给出置信度，无匹配时要求 `--domain` 指定；可选检索近 2 年 arXiv 同主题论文，`--offline` 跳过；生成 `session_domain_profile.json`）；
+- `scripts/self_evolve.py`：句式萃取工具（解析本地 MinerU Markdown 全文或 arXiv 摘要，清洗 `<sub>` 等 OCR 残留、按句切分并用关键词模式筛出候选因果/转折/图表句式，与句式库去重；默认仅预览，人工审核后加 `--apply` 才写入句式库与 `EVOLUTION_LOG.md`）；
 - `scripts/plot_data_curves.py`：标准多种子收敛曲线绘制脚本（自动注入 Okabe-Ito 配色、`fill_between` 阴影方差、IEEE 单栏尺寸 3.4 in、自动导出矢量 PDF）；
 - `scripts/plot_bar_ablation.py`：分组消融柱状图脚本（包含误差棒、顶部数值标签与紧凑布局）；
 - `scripts/gen_architecture_diagram.py`：矢量系统架构图生成脚本（使用 Matplotlib Patches 自动绘制带圈序号 ①–⑥、双向通信通道与模块边界）；
-- `scripts/check_layout.py`：双栏排版浮动体错位自动检测脚本（基于编译日志分析浮动体与首次引用的页码偏差）；
+- `scripts/floatcheck.sty` + `scripts/check_layout.py`：浮动体位置检查。`floatcheck.sty` 在诊断编译中用 `\pdfsavepos` 记录每个浮动体与每处 `\ref`/`\cref`/`\autoref` 的页码和坐标，`check_layout.py` 据此检查三大铁律（同页且在阅读顺序上先于首次引用；`figure*` 最早在定义处下一页；从日志中的 `Underfull \vbox ... while \output is active` 推断栏底空白），并汇总浮动体相关警告；有错误时退出码为 1。段末孤行无法从日志检测，需人工查看 PDF；
 - `references/domain_taxonomies.json`：计算机各顶级领域（安全、系统、机器学习、NLP）结构要求与图表偏好分类库；
 - `references/plotting_style_guide.md`：详细的 IEEE/ACM 图表尺寸、字号层级规范与完整配色代码；
 - `references/mechanism_sentence_bank.md`：顶会顶刊经典因果归因学术句式库（支持自进化热追加）。
@@ -308,9 +323,10 @@ plt.rcParams['axes.prop_cycle'] = plt.cycler(color=[
 ### 1. 领域自适应对齐模块（Domain-Adaptive Profiler）
 在面对任何新的论文写作需求时，Agent 在执行正文编写前自动执行 Phase 0：
 1. **领域与目标顶会路由（Domain Routing）**：
-   - 提取论文关键词与核心机制，映射至 `references/domain_taxonomies.json` 分类树（如 `security_privacy` 对标 S&P/CCS；`distributed_systems` 对标 OSDI/SOSP；`machine_learning_fl` 对标 NeurIPS/TCC）；
+   - 运行 `python3 scripts/domain_adapter.py --file idea.md`，按关键词整词匹配打分，映射至 `references/domain_taxonomies.json` 分类树（如 `security_privacy` 对标 S&P/CCS；`distributed_systems` 对标 OSDI/SOSP；`machine_learning_fl` 对标 NeurIPS/TCC）；
 2. **标杆文献动态检索（Exemplar Retrieval）**：
-   - 自动查询 arXiv API，检索该领域最近 1–2 年的高引/Spotlight 论文摘要与结构；
+   - 查询 arXiv API，取最近 2 年按相关度排序的同主题论文摘要（arXiv 不提供引用数，因此不是“高引”筛选；离线或网络受限时用 `--offline`）；
+   - 检查输出中的 `selection.confidence`：为 `low`/`none` 时，Agent 应向用户确认领域并用 `--domain` 指定，不要猜测；
 3. **微调配置文件生成（Profile Generation）**：
    - 动态输出 `session_domain_profile.json`，在会话中覆盖如下规则：
      - **结构约束**：如安全领域强制插入 `Threat Model and Assumptions`，系统领域强制插入 `Testbed & Workload Specs`；
@@ -318,15 +334,15 @@ plt.rcParams['axes.prop_cycle'] = plt.cycler(color=[
      - **词汇调优**：激活特定领域的学术因果动词（如解耦、抑制、正交投影、梯度扰动上界）。
 
 ### 2. 文献检索与 Skill 持续自进化模块（Self-Evolution Engine）
-Skill 不再是静态的死规则，而是具有自主学习能力的活体系统：
+让句式库随着用户提供的优秀范文持续扩充（基于关键词模式匹配，所有候选都需人工审核）：
 1. **多源输入摄入（Multi-Source Ingestion）**：
-   - 支持解析用户提供的 MinerU Markdown（如 FedPE 等顶刊全文）或指定 arXiv 查询词自动批量拉取最新论文；
+   - 支持解析用户提供的 MinerU Markdown（如 FedPE 等顶刊全文，效果最好）或指定 arXiv 查询词拉取最新论文的**标题与摘要**（arXiv API 不返回全文）；
+   - 输入先经清洗：去除 `<sub>`/`<sup>` 等 OCR 标签、图片、公式与 `[12]` 类引用标号，再按句切分；
 2. **高阶表达模式萃取（Pattern Distillation）**：
-   - 自动运用正则与语义模式识别出：
+   - 对每个句子用关键词模式识别出（含残留乱码、碎片单词的句子会被丢弃）：
      - *因果归因句型（Causal Attributions）*：寻找包含 `stems from`, `attributable to`, `decouples ... from`, `penalizes ... thereby preventing` 等深层机制句；
      - *顶会转折批判句型（Rhetorical Transitions）*：寻找指出已有工作本质死穴的批判性句型；
      - *图表论述句型（Figure Phrasings）*：提炼顶会作者如何将实验折线与消融柱状图无缝串联至正文逻辑中；
-3. **技能库持久化热更新（Persistent Hot-Patching）**：
-   - 自动将新萃取的代表性句型注入 `references/mechanism_sentence_bank.md`；
-   - 在 `EVOLUTION_LOG.md` 中记录进化时间、文献来源与新增知识点；
-   - 实现“用户每输入一篇优秀范文，或者每做一次学术检索，整个 Agent 的写作与绘图水平就向上进化一级”。
+3. **审核后写入（Review, then Apply）**：
+   - 默认只预览候选句（与句式库已有句子自动去重）；Agent 应把候选展示给用户，确认后再加 `--apply` 写入 `references/mechanism_sentence_bank.md`；
+   - 写入时同时在 `EVOLUTION_LOG.md` 中记录时间、来源与新增数量。

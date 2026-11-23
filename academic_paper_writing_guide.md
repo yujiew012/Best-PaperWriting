@@ -539,13 +539,13 @@ Conclusion 是全文的终局裁决，控制在严格的**两段式结构（120�
 为了让本写作与绘图规范具备跨学科自适应性与持续生命力，系统深度吸收了 **Orchestra-Research/AI-Research-SKILLs** 的双循环元架构设计：
 
 ### 6.1 领域与风格自适应对齐（Domain-Adaptive Alignment）
-- **分类学路由（Taxonomy Routing）**：基于 `domain_taxonomies.json`，自动将用户输入（Idea、实验数据或草稿）分类至安全隐私（S&P/CCS）、分布式系统（OSDI/SOSP）、机器学习（NeurIPS/ICML）、大模型与自然语言（ACL/EMNLP）等各大顶会赛道。
-- **自动检索顶会标杆**：自动调用 arXiv API 或学术元数据库，抓取目标领域近 1–2 年的高引、Spotlight 范文。
+- **分类学路由（Taxonomy Routing）**：基于 `domain_taxonomies.json` 的关键词整词匹配打分（并报告置信度；无匹配或置信度低时需用 `--domain` 手动指定），将用户输入（Idea、实验数据或草稿）分类至安全隐私（S&P/CCS）、分布式系统（OSDI/SOSP）、机器学习（NeurIPS/ICML）、大模型与自然语言（ACL/EMNLP）等各大顶会赛道。
+- **检索同主题标杆**：可选调用 arXiv API，取最近 2 年按相关度排序的同主题论文摘要（arXiv 不提供引用数，因此不是“高引/Spotlight”筛选）。
 - **动态微调生成配置**：生成 `session_domain_profile.json`，自适应调整章节结构（如安全领域的 Threat Model、系统领域的 Hardware Testbed）与图表选型（如系统的 CDF 延迟图、网络流时延图）。
 
 ### 6.2 技能持续自进化与知识沉淀（Continuous Self-Evolution）
-- **范文智能萃取（Pattern Distillation）**：通过 `self_evolve.py` 自动化解析传入的优质顶会范文（如 MinerU 解析出的 Markdown）或在线检索最新的顶会 proceedings，萃取顶会作者的高阶因果归因句式（Topic-Evidence-Mechanism）与经典转折批判句。
-- **知识库热更新（Persistent Hot-Patching）**：萃取的优质表达自动追加进 `references/mechanism_sentence_bank.md`，并在 `EVOLUTION_LOG.md` 记录进化轨迹，让全套 Skill 实现“随着论文阅读量增加而自我进化、越用越强”。
+- **范文智能萃取（Pattern Distillation）**：通过 `self_evolve.py` 解析传入的优质顶会范文（如 MinerU 解析出的 Markdown 全文，先清洗 OCR 残留）或 arXiv 最新论文的摘要，用关键词模式匹配萃取候选顶会作者的高阶因果归因句式（Topic-Evidence-Mechanism）与经典转折批判句。
+- **审核后写入（Review, then Apply）**：候选句默认只预览并与已有句式去重，人工审核后加 `--apply` 才追加进 `references/mechanism_sentence_bank.md`，同时在 `EVOLUTION_LOG.md` 记录来源与数量。
 
 ---
 
