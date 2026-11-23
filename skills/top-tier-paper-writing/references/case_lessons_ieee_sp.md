@@ -1,4 +1,4 @@
-# 顶会论文写作与图表经验总结
+# 案例经验：IEEE S&P 会议论文（LEVER / Provenance Gate）
 
 本文总结了 LEVER / Provenance Gate 论文（IEEE S&P 投稿版与 arXiv 版）修改过程中沉淀下来的写作、图表与排版经验。
 
@@ -151,11 +151,11 @@ Discussion 回答 **Why**，不重复 **What**。选 2–3 个核心模块，用
 
 ### 2. 检查工具
 
-用 `\floatcheck` 构建，在每个浮动体处记录位置；再用 `scripts/paper/check_layout.py` 检查同页、顺序和空白。
+用 `\floatcheck` 构建，在每个浮动体处记录位置；再用 `scripts/paper/check_layout.py`（LEVER 论文仓库中的原始脚本）检查同页、顺序和空白。
 
 已知的局限：脚本不识别 "Tables 8 and 9" 这类合并引用，会误报，需要人工核对位置。
 
-> 本仓库提供了同类工具：`skills/top-tier-paper-writing/scripts/floatcheck.sty` + `check_layout.py`（用法见 SKILL.md 第七节）。它记录的是每一次 `\ref`/`\cref` 调用，因此 "Tables~\ref{a} and~\ref{b}" 这类合并引用也能正确识别。
+> 本 Skill 提供了同类工具：`scripts/floatcheck.sty` + `scripts/check_layout.py`（用法见 [`../SKILL.md`](../SKILL.md) 第七节）。它记录的是每一次 `\ref`/`\cref` 调用，因此 "Tables~\ref{a} and~\ref{b}" 这类合并引用也能正确识别。
 
 ### 3. 修复浮动体位置的手段（按优先级）
 
