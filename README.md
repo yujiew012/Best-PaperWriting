@@ -140,3 +140,24 @@ uv run $S/check_bib.py paper/refs.bib --tex paper/main.tex
 - 修改后运行 `python3 skills/top-tier-paper-writing/scripts/validate_skill.py`：检查 frontmatter（`name` 与目录一致、`description` 单行且不超过 1024 字符）、`SKILL.md` 提到的路径都存在、每个脚本都有 PEP 723 头并能编译、`references/` 与 `assets/` 中没有 SKILL.md 无法到达的文件。
 - `SKILL.md` 只放流程、规则与完成标准（500 行以内）；细节写进 `references/`，并在对应分支的 **Read** 步骤中登记。
 - 新增确定性检查时，写成 `scripts/` 中的脚本（带 PEP 723 头、`--json`、统一退出码），并把它的代码加入 `references/lint_rules.md`。
+
+---
+
+## 六、投喂流浪猫 🐱
+
+如果这个 Skill 帮你少熬了几个改稿的夜，欢迎扫码请流浪猫吃顿饭。**所有赞助都将用于为流浪猫购买猫粮。**
+
+If this skill saved you a few late nights of revisions, you can scan either code below to buy food for stray cats. **All sponsorship goes to cat food for stray cats.**
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/images/sponsor_wechat_pay.jpg" alt="微信支付收款码" width="240"></td>
+    <td align="center"><img src="docs/images/sponsor_wechat_reward.jpg" alt="微信赞赏码" width="240"></td>
+  </tr>
+  <tr>
+    <td align="center">微信支付 WeChat Pay</td>
+    <td align="center">微信赞赏码 WeChat Reward</td>
+  </tr>
+</table>
+
+谢谢你，也替猫咪们谢谢你！ Thank you, from us and from the cats!
