@@ -1,9 +1,5 @@
 # 通用计算机顶会/顶刊论文写作规范与段落解剖指南 (Universal CS Paper Writing Specification)
 
-[![Domain: Computer Science](https://img.shields.io/badge/Domain-Computer%20Science%20(AI%20%7C%20Security%20%7C%20Systems)-blue.svg)]()
-[![Target: Top-tier Conf & Trans](https://img.shields.io/badge/Target-CCF--A%20%2F%20IEEE%20Trans%20%2F%20ACM-brightgreen.svg)]()
-[![Focus: Full Lifecycle Anatomy](https://img.shields.io/badge/Focus-Full%20Lifecycle%20Section%20%26%20Paragraph%20Anatomy-orange.svg)]()
-
 > 本指南综合提炼自高水平计算机体系结构、网络安全、人工智能与分布式系统顶会（如 IEEE S&P）及权威顶级期刊（如 IEEE Transactions, compsoc 模板，以及 Elsevier 权威网络期刊，如 FedPE 顶刊实战案例）的真实写作、审稿与改稿经验。
 > 
 > 旨在从**“发表过多篇顶会/顶刊的优秀博士生与资深审稿人”**视角，建立一套标准化的**通用计算机学术论文写作全景指南**：系统拆解论文从 Title、Abstract 到 Conclusion 的**每一部分的宏观逻辑架构**、**微观段落展开方式（每一段该写什么、怎么写、如何过渡）**，全面覆盖：
@@ -353,20 +349,7 @@ Related Work 绝不是文献清单的简单罗列，其本质使命是**为本�
 
 #### 2.6.4 顶会/顶刊机制映射经典句式库（Mechanism Mapping Sentence Bank）
 
-在撰写实验分析时，直接熟练运用以下经典的“现象 $\to$ 归因 $\to$ 机制”学术句式：
-
-1. **核心组件直接归因**：
-   - *"The superior performance of [Method] can be primarily attributed to [Component A]'s ability to [action], which effectively mitigates [challenge]."*
-   - *"Analysis suggests that [Component A] is capable of [action], providing [benefit] that substantially enhances the adaptability to [scenario]."*
-2. **多组件协同效应归因**：
-   - *"The clear advantage in [metric] stems from the synergistic interactions between [Component A] and [Component B]: the former enables [action 1], while the latter enforces [action 2]."*
-   - *"The well-separated semantic clusters in Fig. 5 highlight the combined effect of rapid adaptation guided by [Component A] and parameter continuity preserved by [Component B]."*
-3. **架构解耦与不变性归因**：
-   - *"The negligible performance variance across distinct backbone architectures underscores the capability of [Method] to decouple [process 1] from [process 2]."*
-   - *"Unlike existing methods whose performance is contingent upon specific structural priors, [Method] is inherently architecture-agnostic."*
-4. **与基线行为差异的因果对比**：
-   - *"While baselines exhibit a pronounced tendency towards catastrophic forgetting during distribution shifts, [Method] maintains a coherent learning trajectory, attributable to [mathematical mechanism]."*
-   - *"This disparity indicates that simply applying [baseline approach] fails to handle [phenomenon], whereas our [specific mechanism] successfully establishes a robust decision boundary."*
+完整句式库（含范例与持续追加的新句式）见同目录 [`mechanism_sentence_bank.md`](mechanism_sentence_bank.md)，按“组件直接归因 / 多组件协同 / 架构解耦 / 行为轨迹对比 / 参数拐点”五类组织。
 
 ---
 
@@ -536,16 +519,7 @@ Conclusion 是全文的终局裁决，控制在严格的**两段式结构（120�
 
 ## 六、自适应领域微调与持续自进化系统（Adaptive Alignment & Self-Evolution）
 
-为了让本写作与绘图规范具备跨学科自适应性与持续生命力，系统深度吸收了 **Orchestra-Research/AI-Research-SKILLs** 的双循环元架构设计：
-
-### 6.1 领域与风格自适应对齐（Domain-Adaptive Alignment）
-- **分类学路由（Taxonomy Routing）**：基于 `domain_taxonomies.json` 的关键词整词匹配打分（并报告置信度；无匹配或置信度低时需用 `--domain` 手动指定），将用户输入（Idea、实验数据或草稿）分类至安全隐私（S&P/CCS）、分布式系统（OSDI/SOSP）、机器学习（NeurIPS/ICML）、大模型与自然语言（ACL/EMNLP）等各大顶会赛道。
-- **检索同主题标杆**：可选调用 arXiv API，取最近 2 年按相关度排序的同主题论文摘要（arXiv 不提供引用数，因此不是“高引/Spotlight”筛选）。
-- **动态微调生成配置**：生成 `session_domain_profile.json`，自适应调整章节结构（如安全领域的 Threat Model、系统领域的 Hardware Testbed）与图表选型（如系统的 CDF 延迟图、网络流时延图）。
-
-### 6.2 技能持续自进化与知识沉淀（Continuous Self-Evolution）
-- **范文智能萃取（Pattern Distillation）**：通过 `self_evolve.py` 解析传入的优质顶会范文（如 MinerU 解析出的 Markdown 全文，先清洗 OCR 残留）或 arXiv 最新论文的摘要，用关键词模式匹配萃取候选顶会作者的高阶因果归因句式（Topic-Evidence-Mechanism）与经典转折批判句。
-- **审核后写入（Review, then Apply）**：候选句默认只预览并与已有句式去重，人工审核后加 `--apply` 才追加进 `references/mechanism_sentence_bank.md`，同时在 `EVOLUTION_LOG.md` 记录来源与数量。
+用法与运行机制见 [`../SKILL.md`](../SKILL.md) 第九节（`scripts/domain_adapter.py` 与 `scripts/self_evolve.py`）。
 
 ---
 

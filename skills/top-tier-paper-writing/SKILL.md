@@ -1,12 +1,10 @@
 ---
 name: top-tier-paper-writing
-description: >-
-  End-to-end computer science top-tier conference and journal (CCF-A, IEEE/ACM Transactions)
-  paper writing and publication-grade academic plotting skill. Guides agents through the entire
-  research publication lifecycle: from generating publication-quality system architecture diagrams
-  (Modern Minimal/TikZ/Vector with numbered steps ①–⑥) and experimental plots (Matplotlib/Seaborn
-  with Okabe-Ito colorblind-safe palette) to crafting section-by-section manuscript prose with deep
-  causal mechanism mapping (rejecting raw data dumping in favor of topic-evidence-attribution logic).
+description: "Write, revise and illustrate computer-science papers for top-tier venues (CCF-A conferences such as IEEE S&P, CCS, USENIX Security, OSDI, NeurIPS, ICML, ACL, and IEEE/ACM Transactions). Use when drafting or revising any paper section (title, abstract, introduction, related work, method, evaluation, discussion, conclusion), turning result tables into analysis prose, writing figure or table captions, making publication-quality plots or architecture diagrams, fixing float placement in two-column LaTeX, verifying references, or preparing arXiv and journal-extension submissions. 适用于计算机顶会/顶刊论文写作、润色、学术绘图、排版与投稿。"
+compatibility: "Agent Skills format (Claude Code, OpenAI Codex, Google Antigravity app/CLI, and other compatible agents). Scripts need Python 3.8+ with matplotlib and numpy; layout checks need pdfLaTeX/XeLaTeX/LuaLaTeX with a 2020-10 or newer LaTeX kernel; arXiv lookups need network access and are optional."
+metadata:
+  version: "1.2.0"
+  language: "zh-CN, en"
 ---
 
 # Top-Tier Paper Writing & Academic Plotting Skill (顶会/顶刊论文全流程写作与学术绘图)
@@ -14,6 +12,23 @@ description: >-
 > 本 Skill 融合了计算机体系结构、安全、AI 与网络顶级会议（如 IEEE S&P）和权威顶刊（如 IEEE Transactions, compsoc 模板，Elsevier 顶刊如 FedPE）的实战写作规范，并深度整合了开源学术绘图前沿标准（Orchestra-Research `academic-plotting` 的双工作流体系与 Okabe-Ito 色盲友好调色板）。
 >
 > 核心目标：帮助 Agent 建立从**“绘图（架构图 + 实验图）”**到**“图表 Caption 规范”**再到**“正文深度机理归因写作”**的全闭环工程化能力。
+
+## 使用约定（适用于任何 Agent）
+
+- **路径**：本文中的 `scripts/…`、`references/…`、`templates/…` 都相对于**本 SKILL.md 所在目录**（下称 `<skill_dir>`）。运行脚本时使用完整路径，例如 `python3 <skill_dir>/scripts/check_layout.py main.aux`，输出文件写到用户的论文目录，而不是 `<skill_dir>`。
+- **依赖**：绘图脚本需要 `python3 -m pip install -r <skill_dir>/requirements.txt`；排版检查需要 LaTeX；`domain_adapter.py` / `self_evolve.py` 的 arXiv 检索需要联网，离线时用 `--offline` 或改用本地文件。
+- **按需加载**：本文件是总纲。只有进入对应步骤时才读取下表中的参考文件，不要一次性全部读入。
+- **写入边界**：除 `self_evolve.py --apply`（且用户已审核候选句）外，不要修改 `<skill_dir>` 内的文件。
+
+| 正在做的事 | 读取 |
+| :--- | :--- |
+| 起草或重写某一章节、逐段规划内容、句子与用语打磨、参考文献核验 | `references/section_anatomy_guide.md`（各章节宏观结构与段落解剖的完整版） |
+| 写实验分析的“归因”句 | `references/mechanism_sentence_bank.md` |
+| 绘图：尺寸、字号、配色 | `references/plotting_style_guide.md`；示例脚本见 `scripts/plot_*.py`、`scripts/gen_architecture_diagram.py` |
+| 识别论文领域、补齐领域必备章节 | `scripts/domain_adapter.py` + `references/domain_taxonomies.json` |
+| 安全/LLM 类会议稿的修改、排版与 arXiv 版本准备 | `references/case_lessons_ieee_sp.md`（IEEE S&P 实战案例） |
+| 期刊稿、会议扩展投稿、参考文献逐条核对 | `references/case_lessons_ieee_tcc.md`（IEEE TCC 实战案例） |
+| 把实验表格转成分析正文、设计架构图的提示词 | `templates/prompt_templates.md` |
 
 ---
 
@@ -55,6 +70,10 @@ description: >-
 |   - 解析新文献 (MinerU Markdown 全文 / arXiv 最新论文摘要)                                          |
 |   - 关键词模式匹配萃取候选因果归因句与批判性转折句，先预览、人工审核                                 |
 |   - 审核后 --apply 追加进机制句式库，并记录进化日志 EVOLUTION_LOG.md                                |
+|                                                                                                    |
+| Phase 7: 修订、核验与投稿 (Revision & Submission)                                                  |
+|   - 补实验后全文回溯旧表述；关键数字回到结果文件核对；参考文献多源逐条核验                         |
+|   - 准备 arXiv 版本 / 期刊扩展投稿材料，见第十节与两份案例经验                                     |
 +----------------------------------------------------------------------------------------------------+
 ```
 
@@ -312,7 +331,11 @@ python3 /path/to/skill/scripts/check_layout.py main.aux
 - `scripts/floatcheck.sty` + `scripts/check_layout.py`：浮动体位置检查。`floatcheck.sty` 在诊断编译中用 `\pdfsavepos` 记录每个浮动体与每处 `\ref`/`\cref`/`\autoref` 的页码和坐标，`check_layout.py` 据此检查三大铁律（同页且在阅读顺序上先于首次引用；`figure*` 最早在定义处下一页；从日志中的 `Underfull \vbox ... while \output is active` 推断栏底空白），并汇总浮动体相关警告；有错误时退出码为 1。段末孤行无法从日志检测，需人工查看 PDF；
 - `references/domain_taxonomies.json`：计算机各顶级领域（安全、系统、机器学习、NLP）结构要求与图表偏好分类库；
 - `references/plotting_style_guide.md`：详细的 IEEE/ACM 图表尺寸、字号层级规范与完整配色代码；
-- `references/mechanism_sentence_bank.md`：顶会顶刊经典因果归因学术句式库（支持自进化热追加）。
+- `references/mechanism_sentence_bank.md`：顶会顶刊经典因果归因学术句式库（支持自进化热追加）；
+- `references/section_anatomy_guide.md`：全生命周期章节与段落解剖的完整版（本文第六节为其摘要），另含句子微雕、表格规范与参考文献核验；
+- `references/case_lessons_ieee_sp.md` / `references/case_lessons_ieee_tcc.md`：两篇真实论文（IEEE S&P 会议稿、IEEE TCC 期刊稿）修改与投稿中沉淀的具体经验与正反例；
+- `templates/prompt_templates.md`：“实验表格 → 归因正文”与“架构图设计”提示词模板；
+- `requirements.txt`：脚本的 Python 依赖。
 
 ---
 
@@ -346,3 +369,14 @@ python3 /path/to/skill/scripts/check_layout.py main.aux
 3. **审核后写入（Review, then Apply）**：
    - 默认只预览候选句（与句式库已有句子自动去重）；Agent 应把候选展示给用户，确认后再加 `--apply` 写入 `references/mechanism_sentence_bank.md`；
    - 写入时同时在 `EVOLUTION_LOG.md` 中记录时间、来源与新增数量。
+
+---
+
+## 十、修订、参考文献核验与投稿（Phase 7: Revision & Submission）
+
+1. **补实验后的全局回溯**：每加一组实验，通读引言、贡献列表、威胁模型、理论适用范围、实验设置、结论与摘要中的数字，修改被新结果推翻或削弱的句子（案例见 `references/case_lessons_ieee_tcc.md` §1.1）。
+2. **数据与运行实例核对**：正文中的关键数字和贯穿实例逐一回到实验结果文件核实，数据不支持的说法一律不写（见 `references/case_lessons_ieee_sp.md` 第一节）。
+3. **参考文献逐条核验**：对每条文献在出版方页面、DBLP 或 arXiv 中至少两个来源核对作者、标题、年份、会议/期刊与页码，常见错误类型与格式规范见 `references/section_anatomy_guide.md` 第五节和 `references/case_lessons_ieee_tcc.md` 第 5 节。
+4. **改动后的版面回归**：每次改正文前后各跑一次 floatcheck 诊断编译与 `check_layout.py` 并对比，`FAIL` 不得增加；同时核对页数上限。
+5. **arXiv 版本**：`\pdfoutput=1`、删除源码注释但保留行末 `%`、附带与 `.bib` 一致的 `.bbl`、在空目录中独立编译验证（见 `references/case_lessons_ieee_sp.md` 第七节）。
+6. **会议论文扩展为期刊稿**：投稿材料清单与“新增内容占比”说明的写法见 `references/case_lessons_ieee_tcc.md` 第 6 节。
