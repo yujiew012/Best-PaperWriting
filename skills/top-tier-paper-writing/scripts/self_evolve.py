@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.8"
+# dependencies = []
+# ///
 """
 Skill Self-Evolution Module (技能自进化模块)
 Part of top-tier-paper-writing skill.

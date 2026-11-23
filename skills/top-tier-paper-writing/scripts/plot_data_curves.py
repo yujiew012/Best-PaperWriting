@@ -1,110 +1,134 @@
 #!/usr/bin/env python3
-"""
-Publication-Quality Academic Curve Plotter (Multi-Seed Shaded Area).
-Adheres to IEEE/ACM Conference & Transactions specifications.
-Enforces Okabe-Ito colorblind-safe palette, serif typography, and vector PDF output.
-"""
+# /// script
+# requires-python = ">=3.8"
+# dependencies = ["matplotlib>=3.5", "numpy>=1.21"]
+# ///
+"""Line plot of mean +/- std across seeds (convergence, sensitivity, two-phase tests).
 
+Input: long-format CSV with columns  method,x,seed,value  (seed may be omitted
+when there is one run per point). Mean and std are computed here -- never by hand.
+
+    uv run plot_data_curves.py --data curves.csv --ours "FedPE (Ours)" \
+        --xlabel "Communication rounds" --ylabel "Test accuracy (%)" --out fig_conv.pdf
+    # sensitivity sweep: mark the best x of our method
+    uv run plot_data_curves.py --data sweep.csv --ours Ours --mark-best max --out fig_sens.pdf
+    # two-phase stress test: dashed separator at x=100
+    uv run plot_data_curves.py --data stress.csv --ours Ours --phase-split 100 --out fig_phase.pdf
+
+Exit codes: 0 ok, 2 bad input. Warns (stderr) when a series has < 3 seeds.
+"""
 import argparse
-import numpy as np
-import matplotlib.pyplot as plt
+import csv
+import os
+import sys
+from collections import OrderedDict, defaultdict
 
-# Okabe-Ito Colorblind-Safe Palette
-OKABE_ITO = {
-    "blue": "#0072B2",          # Primary method
-    "orange": "#E69F00",        # Baseline 1
-    "bluish_green": "#009E73",  # Baseline 2 / Variant
-    "vermilion": "#D55E00",     # Adverse / Attack / Degraded
-    "reddish_purple": "#CC79A7",# Baseline 3
-    "sky_blue": "#56B4E9",      # Light support
-    "yellow": "#F0E442",
-    "black": "#000000"
-}
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pubstyle import apply_style, fail, save_figure, series_styles, OKABE_ITO  # noqa: E402
 
-def set_academic_style(single_col=True):
-    """Sets global matplotlib rcParams for IEEE/ACM publication standards."""
-    # IEEE single column width: 3.3-3.5 in, double column width: 6.8-7.0 in
-    width = 3.4 if single_col else 6.9
-    height = 2.4 if single_col else 3.2
-    
-    plt.rcParams.update({
-        "font.family": "serif",
-        "font.serif": ["Times New Roman", "DejaVu Serif", "Computer Modern Roman"],
-        "font.size": 9,
-        "axes.titlesize": 10,
-        "axes.labelsize": 9,
-        "xtick.labelsize": 8,
-        "ytick.labelsize": 8,
-        "legend.fontsize": 7.5,
-        "legend.frameon": False,
-        "mathtext.fontset": "stix",
-        "figure.figsize": (width, height),
-        "figure.autolayout": True,
-        "lines.linewidth": 1.5,
-        "lines.markersize": 4,
-        "pdf.fonttype": 42,
-        "ps.fonttype": 42,
-        "axes.grid": True,
-        "grid.alpha": 0.25,
-        "grid.linestyle": "--"
-    })
+DEMO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "curves_example.csv")
 
-def generate_synthetic_data():
-    """Generates synthetic benchmark convergence curves with multiple seeds."""
-    rounds = np.arange(1, 101)
-    
-    # Method: Fast convergence, high stability (Our method)
-    our_mean = 90 - 45 * np.exp(-rounds / 15)
-    our_std = 1.2 * np.exp(-rounds / 40) + 0.3
-    
-    # Baseline 1: Moderate convergence, fluctuations
-    b1_mean = 85 - 45 * np.exp(-rounds / 25) + 1.5 * np.sin(rounds / 5) * np.exp(-rounds / 50)
-    b1_std = 2.5 * np.exp(-rounds / 60) + 0.8
-    
-    # Baseline 2: Catastrophic forgetting / oscillations under dynamic drift
-    drift = np.where(rounds > 50, 6.0 * np.sin((rounds - 50) / 4), 0.0)
-    b2_mean = 82 - 45 * np.exp(-rounds / 20) - drift
-    b2_std = 3.5 * np.ones_like(rounds)
-    
-    return rounds, (our_mean, our_std), (b1_mean, b1_std), (b2_mean, b2_std)
 
-def plot_curves(output_path="fig_convergence.pdf"):
-    set_academic_style(single_col=True)
-    rounds, (our_m, our_s), (b1_m, b1_s), (b2_m, b2_s) = generate_synthetic_data()
-    
+def load(path):
+    if not os.path.exists(path):
+        fail(f"data file not found: {path}")
+    series = OrderedDict()   # method -> {x: [values]}
+    with open(path, newline="", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        cols = {c.strip().lower(): c for c in (reader.fieldnames or [])}
+        for need in ("method", "x", "value"):
+            if need not in cols:
+                fail(f"{path}: missing column '{need}' (need method,x,[seed,]value; got {reader.fieldnames})")
+        for i, row in enumerate(reader, start=2):
+            try:
+                m = row[cols["method"]].strip()
+                x = float(row[cols["x"]])
+                v = float(row[cols["value"]])
+            except (TypeError, ValueError):
+                fail(f"{path}:{i}: non-numeric x/value in row {row}")
+            series.setdefault(m, defaultdict(list))[x].append(v)
+    if not series:
+        fail(f"{path}: no data rows")
+    return series
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    src = ap.add_mutually_exclusive_group(required=True)
+    src.add_argument("--data", help="long-format CSV: method,x,seed,value")
+    src.add_argument("--demo", action="store_true", help="plot the bundled example data (NOT for papers)")
+    ap.add_argument("--out", required=True, help="output PDF path (a PNG preview is written next to it)")
+    ap.add_argument("--ours", help="method name to highlight (blue, solid, drawn on top)")
+    ap.add_argument("--xlabel", default="x")
+    ap.add_argument("--ylabel", default="value")
+    ap.add_argument("--layout", choices=["single", "double", "onehalf"], default="single")
+    ap.add_argument("--height", type=float, help="figure height in inches")
+    ap.add_argument("--xlim", type=float, nargs=2)
+    ap.add_argument("--ylim", type=float, nargs=2)
+    ap.add_argument("--legend", default="best", help="matplotlib legend location")
+    ap.add_argument("--markers", type=int, default=10, help="approximate number of markers per line")
+    ap.add_argument("--phase-split", type=float, help="x value of a Phase I / Phase II separator")
+    ap.add_argument("--mark-best", choices=["max", "min"], help="annotate the best mean of --ours")
+    ap.add_argument("--min-seeds", type=int, default=3)
+    args = ap.parse_args(argv)
+
+    data = load(DEMO if args.demo else args.data)
+    if args.demo:
+        print("[warn] DEMO data -- never use this figure in a paper", file=sys.stderr)
+    if args.ours and args.ours not in data:
+        fail(f"--ours '{args.ours}' not found; methods are: {list(data)}")
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    apply_style(args.layout, args.height)
     fig, ax = plt.subplots()
-    
-    # 1. Plot Our Method (Blue, solid line, circular marker)
-    ax.plot(rounds, our_m, color=OKABE_ITO["blue"], linestyle="-", marker="o", 
-            markevery=10, label="FedPE (Ours)")
-    ax.fill_between(rounds, our_m - our_s, our_m + our_s, color=OKABE_ITO["blue"], alpha=0.18)
-    
-    # 2. Plot Baseline 1 (Orange, dashed line, square marker)
-    ax.plot(rounds, b1_m, color=OKABE_ITO["orange"], linestyle="--", marker="s", 
-            markevery=10, label="pFedPG")
-    ax.fill_between(rounds, b1_m - b1_s, b1_m + b1_s, color=OKABE_ITO["orange"], alpha=0.15)
-    
-    # 3. Plot Baseline 2 (Vermilion, dash-dot line, diamond marker)
-    ax.plot(rounds, b2_m, color=OKABE_ITO["vermilion"], linestyle="-.", marker="d", 
-            markevery=10, label="FedAvg")
-    ax.fill_between(rounds, b2_m - b2_s, b2_m + b2_s, color=OKABE_ITO["vermilion"], alpha=0.15)
-    
-    # Formatting
-    ax.set_xlabel("Communication Rounds")
-    ax.set_ylabel("Test Accuracy (%)")
-    ax.set_xlim(0, 100)
-    ax.set_ylim(40, 95)
-    ax.legend(loc="lower right")
-    
-    # Save vector PDF & preview PNG
-    plt.savefig(output_path, format="pdf", bbox_inches="tight", dpi=300)
-    png_path = output_path.replace(".pdf", ".png")
-    plt.savefig(png_path, format="png", bbox_inches="tight", dpi=300)
-    print(f"Generated publication vector PDF: {output_path}")
-    print(f"Generated preview PNG: {png_path}")
+    styles = series_styles(list(data), args.ours)
+
+    for method, points in data.items():
+        xs = np.array(sorted(points))
+        runs = [points[x] for x in xs]
+        mean = np.array([np.mean(r) for r in runs])
+        std = np.array([np.std(r, ddof=1) if len(r) > 1 else 0.0 for r in runs])
+        n_seeds = min(len(r) for r in runs)
+        if n_seeds < args.min_seeds:
+            print(f"[warn] '{method}': only {n_seeds} run(s) at some x; state the number of seeds "
+                  f"in the caption (rule: >= {args.min_seeds})", file=sys.stderr)
+        st = styles[method]
+        every = max(1, len(xs) // max(args.markers, 1))
+        ax.plot(xs, mean, label=method, color=st["color"], linestyle=st["linestyle"],
+                marker=st["marker"], markevery=every, zorder=st["zorder"])
+        if n_seeds > 1:
+            ax.fill_between(xs, mean - std, mean + std, color=st["color"],
+                            alpha=0.18 if method == args.ours else 0.12, linewidth=0, zorder=st["zorder"] - 1)
+        if args.mark_best and method == args.ours:
+            idx = int(np.argmax(mean) if args.mark_best == "max" else np.argmin(mean))
+            ax.annotate(f"{xs[idx]:g}", xy=(xs[idx], mean[idx]), xytext=(0, 8), textcoords="offset points",
+                        ha="center", fontsize=7.5, fontweight="bold", color=OKABE_ITO["blue"])
+            ax.plot([xs[idx]], [mean[idx]], marker="*", markersize=9, color=OKABE_ITO["blue"], zorder=6)
+
+    if args.phase_split is not None:
+        ax.axvline(args.phase_split, color="#555555", linestyle="--", linewidth=0.9)
+        tr = ax.get_xaxis_transform()   # x in data units, y in axes units
+        ax.text(args.phase_split, 0.04, "  Phase II", transform=tr, ha="left", va="bottom",
+                fontsize=7.5, color="#555555")
+        ax.text(args.phase_split, 0.04, "Phase I  ", transform=tr, ha="right", va="bottom",
+                fontsize=7.5, color="#555555")
+
+    ax.set_xlabel(args.xlabel)
+    ax.set_ylabel(args.ylabel)
+    if args.xlim:
+        ax.set_xlim(*args.xlim)
+    if args.ylim:
+        ax.set_ylim(*args.ylim)
+    handles, labels = ax.get_legend_handles_labels()
+    if args.ours in labels:   # put ours first in the legend
+        i = labels.index(args.ours)
+        handles.insert(0, handles.pop(i))
+        labels.insert(0, labels.pop(i))
+    ax.legend(handles, labels, loc=args.legend)
+    save_figure(fig, args.out)
+    return 0
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Plot publication-quality convergence curves.")
-    parser.add_argument("--out", type=str, default="fig_convergence.pdf", help="Output PDF file path")
-    args = parser.parse_args()
-    plot_curves(args.out)
+    sys.exit(main())

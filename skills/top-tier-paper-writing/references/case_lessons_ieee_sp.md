@@ -155,7 +155,7 @@ Discussion 回答 **Why**，不重复 **What**。选 2–3 个核心模块，用
 
 已知的局限：脚本不识别 "Tables 8 and 9" 这类合并引用，会误报，需要人工核对位置。
 
-> 本 Skill 提供了同类工具：`scripts/floatcheck.sty` + `scripts/check_layout.py`（用法见 [`../SKILL.md`](../SKILL.md) 第七节）。它记录的是每一次 `\ref`/`\cref` 调用，因此 "Tables~\ref{a} and~\ref{b}" 这类合并引用也能正确识别。
+> 本 Skill 提供了同类工具：`scripts/layout_check.py`（一条命令完成诊断编译、检查与基线对比，用法见 [`layout_and_typesetting.md`](layout_and_typesetting.md)）。它记录的是每一次 `\ref`/`\cref` 调用，因此 "Tables~\ref{a} and~\ref{b}" 这类合并引用也能正确识别。
 
 ### 3. 修复浮动体位置的手段（按优先级）
 

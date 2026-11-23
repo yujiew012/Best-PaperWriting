@@ -94,7 +94,7 @@
   python3 paper/tools/check_float_placement.py paper /tmp/build
   ```
 
-  > 该脚本位于 QEDFL 项目仓库中；本 Skill 的通用版本为 `scripts/floatcheck.sty` + `scripts/check_layout.py`（用法见 [`../SKILL.md`](../SKILL.md) 第七节）。
+  > 该脚本位于 QEDFL 项目仓库中；本 Skill 的通用版本为 `scripts/layout_check.py`（一条命令完成诊断编译、检查与基线对比，用法见 [`layout_and_typesetting.md`](layout_and_typesetting.md)）。
 
 - **先记录基线，再改文字。** 比较方法是 `git stash` → 跑一次 → `git stash pop` → 再跑一次，对比两次输出。
 - 本项目的基线：

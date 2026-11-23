@@ -1,104 +1,219 @@
 #!/usr/bin/env python3
-"""
-Publication-Quality System Architecture Diagram Generator.
-Uses pure Matplotlib Patches to generate vector PDF/PNG diagrams.
-Enforces Modern Minimal academic aesthetics, numbered steps ①–⑥, and crisp borders.
-"""
+# /// script
+# requires-python = ">=3.8"
+# dependencies = ["matplotlib>=3.5"]
+# ///
+"""Modern-minimal architecture diagram from a JSON spec (vector PDF + PNG preview).
 
+    uv run gen_architecture_diagram.py --spec fig_arch.json --out fig_arch.pdf
+    uv run gen_architecture_diagram.py --demo --out /tmp/arch_demo.pdf   # bundled example
+
+Spec (see assets/architecture_example.json):
+{
+  "layout": "double" | "single" | "onehalf",  "height": 2.6,
+  "canvas": [10, 4],                         # data-coordinate extent (x, y)
+  "groups": [{"label", "x", "y", "w", "h", "role"}],        # dashed role boundaries
+  "blocks": [{"id", "label", "sub", "x", "y", "w", "h", "role"}],
+  "edges":  [{"from", "to", "label", "step", "from_side", "to_side", "offset"}]
+}
+role: core (our module, blue) | support (server/aux, green) | adverse (attack/
+constraint, vermilion) | neutral (data/generic, grey). `step` draws a numbered
+badge (1-9) at the middle of the arrow. `*_side` in {left,right,top,bottom}
+pins the attachment side; `offset` shifts the arrow perpendicular to itself
+(use +/-0.25 for a pair of up/down-link arrows).
+
+Validation (exit 2): unknown block ids, duplicate block ids, duplicate steps.
+Warnings: overlapping blocks, labels wider than their box, gaps in step numbers.
+"""
 import argparse
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
+import json
+import math
+import os
+import sys
 
-def draw_badge(ax, x, y, num_str, bg_color="#D55E00", text_color="white"):
-    """Draws a numbered circle badge ①–⑥ for workflow steps."""
-    circle = patches.Circle((x, y), 0.18, facecolor=bg_color, edgecolor="black", linewidth=0.8, zorder=10)
-    ax.add_patch(circle)
-    ax.text(x, y, num_str, ha="center", va="center", color=text_color, fontsize=8, fontweight="bold", zorder=11)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pubstyle import apply_style, fail, save_figure  # noqa: E402
 
-def draw_block(ax, x, y, w, h, text, subtext="", bg_color="#EBF3FB", border_color="#0072B2"):
-    """Draws a rounded modern-minimal academic component box."""
-    box = patches.FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.08,rounding_size=0.1",
-                                facecolor=bg_color, edgecolor=border_color, linewidth=1.2, zorder=2)
-    ax.add_patch(box)
-    if subtext:
-        ax.text(x + w / 2, y + h * 0.62, text, ha="center", va="center", fontsize=8.5, fontweight="bold", color="#111111", zorder=3)
-        ax.text(x + w / 2, y + h * 0.28, subtext, ha="center", va="center", fontsize=7.0, color="#444444", zorder=3)
-    else:
-        ax.text(x + w / 2, y + h / 2, text, ha="center", va="center", fontsize=8.5, fontweight="bold", color="#111111", zorder=3)
+DEMO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "architecture_example.json")
+ROLES = {
+    "core": ("#E8F1F8", "#0072B2"),
+    "support": ("#EAF6EE", "#009E73"),
+    "adverse": ("#FDEEE6", "#D55E00"),
+    "neutral": ("#FFFFFF", "#555555"),
+}
+GROUP_ROLES = {
+    "core": ("#F3F8FC", "#0072B2"),
+    "support": ("#F5F9F6", "#009E73"),
+    "adverse": ("#FDF6F2", "#D55E00"),
+    "neutral": ("#FAFAFA", "#999999"),
+}
 
-def draw_arrow(ax, x1, y1, x2, y2, label=""):
-    """Draws a clean directional data flow arrow."""
-    ax.annotate("", xy=(x2, y2), xytext=(x1, y1),
-                arrowprops=dict(arrowstyle="->,head_width=0.25,head_length=0.35",
-                                color="#222222", lw=1.2), zorder=4)
-    if label:
-        mx, my = (x1 + x2) / 2, (y1 + y2) / 2 + 0.15
-        ax.text(mx, my, label, ha="center", va="center", fontsize=7.2, color="#333333", zorder=5)
 
-def build_architecture_diagram(output_path="fig_framework.pdf"):
-    # Size suitable for double-column or 1.5-column (e.g. 6.8 x 2.6 inches)
-    fig, ax = plt.subplots(figsize=(6.8, 2.6))
-    ax.set_xlim(0, 10)
-    ax.set_ylim(0, 4)
+def validate(spec):
+    blocks = spec.get("blocks", [])
+    ids = [b.get("id") for b in blocks]
+    dup = {i for i in ids if ids.count(i) > 1}
+    if dup:
+        fail(f"duplicate block ids: {sorted(dup)}")
+    for b in blocks:
+        for k in ("id", "label", "x", "y", "w", "h"):
+            if k not in b:
+                fail(f"block {b.get('id', '?')}: missing '{k}'")
+        if b.get("role", "neutral") not in ROLES:
+            fail(f"block {b['id']}: role must be one of {list(ROLES)}")
+    steps = []
+    for e in spec.get("edges", []):
+        for end in ("from", "to"):
+            if e.get(end) not in ids:
+                fail(f"edge {e}: unknown block id '{e.get(end)}'")
+        if "step" in e:
+            steps.append(int(e["step"]))
+    if len(steps) != len(set(steps)):
+        fail(f"duplicate step numbers: {sorted(steps)}")
+    if steps and sorted(steps) != list(range(1, len(steps) + 1)):
+        print(f"[warn] steps are not 1..{len(steps)} without gaps: {sorted(steps)}", file=sys.stderr)
+    for i, a in enumerate(blocks):
+        for b in blocks[i + 1:]:
+            if (a["x"] < b["x"] + b["w"] and b["x"] < a["x"] + a["w"]
+                    and a["y"] < b["y"] + b["h"] and b["y"] < a["y"] + a["h"]):
+                print(f"[warn] blocks overlap: {a['id']} and {b['id']}", file=sys.stderr)
+
+
+def anchor(b, toward, side=None):
+    """Point on block b's border facing `toward` (or the middle of `side`)."""
+    cx, cy = b["x"] + b["w"] / 2, b["y"] + b["h"] / 2
+    if side:
+        return {"left": (b["x"], cy), "right": (b["x"] + b["w"], cy),
+                "top": (cx, b["y"] + b["h"]), "bottom": (cx, b["y"])}[side]
+    dx, dy = toward[0] - cx, toward[1] - cy
+    if dx == 0 and dy == 0:
+        return cx, cy
+    sx = (b["w"] / 2) / abs(dx) if dx else math.inf
+    sy = (b["h"] / 2) / abs(dy) if dy else math.inf
+    s = min(sx, sy)
+    return cx + dx * s, cy + dy * s
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    src = ap.add_mutually_exclusive_group(required=True)
+    src.add_argument("--spec", help="JSON diagram spec")
+    src.add_argument("--demo", action="store_true", help="render the bundled example (NOT for papers)")
+    ap.add_argument("--out", required=True, help="output PDF path (a PNG preview is written next to it)")
+    args = ap.parse_args(argv)
+
+    path = DEMO if args.demo else args.spec
+    if not os.path.exists(path):
+        fail(f"spec not found: {path}")
+    try:
+        with open(path, encoding="utf-8") as f:
+            spec = json.load(f)
+    except json.JSONDecodeError as e:
+        fail(f"{path}: invalid JSON ({e})")
+    validate(spec)
+
+    import matplotlib.pyplot as plt
+    from matplotlib import patches
+    apply_style(spec.get("layout", "double"), spec.get("height", 2.6))
+    plt.rcParams["axes.grid"] = False
+    fig, ax = plt.subplots()
+    cw, ch = spec.get("canvas", [10, 4])
+    ax.set_xlim(0, cw)
+    ax.set_ylim(0, ch)
+    ax.set_aspect("auto")
     ax.axis("off")
 
-    # Client-side Container (Dashed grey boundary)
-    client_box = patches.FancyBboxPatch((0.2, 0.2), 6.0, 3.6, boxstyle="round,pad=0.1",
-                                       facecolor="#FAFAFA", edgecolor="#999999", linestyle="--", linewidth=1.0)
-    ax.add_patch(client_box)
-    ax.text(0.5, 3.55, "Edge Client Node (k)", fontsize=8.5, fontweight="bold", color="#555555")
+    for g in spec.get("groups", []):
+        fill, edge = GROUP_ROLES.get(g.get("role", "neutral"), GROUP_ROLES["neutral"])
+        ax.add_patch(patches.FancyBboxPatch((g["x"], g["y"]), g["w"], g["h"], boxstyle="round,pad=0.05",
+                                            facecolor=fill, edgecolor=edge, linestyle="--", linewidth=1.0,
+                                            zorder=0))
+        ax.text(g["x"] + 0.12, g["y"] + g["h"] - 0.12, g.get("label", ""), ha="left", va="top",
+                fontsize=8, fontweight="bold", color=edge, zorder=1)
 
-    # Server-side Container
-    server_box = patches.FancyBboxPatch((6.8, 0.2), 3.0, 3.6, boxstyle="round,pad=0.1",
-                                       facecolor="#F5F9F6", edgecolor="#009E73", linestyle="--", linewidth=1.0)
-    ax.add_patch(server_box)
-    ax.text(7.1, 3.55, "Central Aggregation Server", fontsize=8.5, fontweight="bold", color="#009E73")
+    blocks = {b["id"]: b for b in spec["blocks"]}
+    texts = []
+    for b in spec["blocks"]:
+        fill, edge = ROLES[b.get("role", "neutral")]
+        ax.add_patch(patches.FancyBboxPatch((b["x"], b["y"]), b["w"], b["h"],
+                                            boxstyle="round,pad=0.03,rounding_size=0.08",
+                                            facecolor=fill, edgecolor=edge, linewidth=1.1, zorder=2))
+        cx = b["x"] + b["w"] / 2
+        if b.get("sub"):
+            t1 = ax.text(cx, b["y"] + b["h"] * 0.62, b["label"], ha="center", va="center",
+                         fontsize=8, fontweight="bold", color="#111111", zorder=3)
+            t2 = ax.text(cx, b["y"] + b["h"] * 0.30, b["sub"], ha="center", va="center",
+                         fontsize=6.8, color="#444444", zorder=3)
+            texts += [(b, t1), (b, t2)]
+        else:
+            texts.append((b, ax.text(cx, b["y"] + b["h"] / 2, b["label"], ha="center", va="center",
+                                     fontsize=8, fontweight="bold", color="#111111", zorder=3)))
 
-    # 1. Input Data
-    draw_block(ax, 0.5, 1.4, 1.1, 1.1, "Local Data", "Batch X_k", bg_color="#FFFFFF", border_color="#666666")
+    labels, badges = [], []
+    for e in spec.get("edges", []):
+        a, b = blocks[e["from"]], blocks[e["to"]]
+        ca = (a["x"] + a["w"] / 2, a["y"] + a["h"] / 2)
+        cb = (b["x"] + b["w"] / 2, b["y"] + b["h"] / 2)
+        p1 = anchor(a, cb, e.get("from_side"))
+        p2 = anchor(b, ca, e.get("to_side"))
+        dx, dy = p2[0] - p1[0], p2[1] - p1[1]
+        norm = math.hypot(dx, dy) or 1.0
+        nx, ny = -dy / norm, dx / norm            # unit normal
+        off = float(e.get("offset", 0.0))
+        p1 = (p1[0] + nx * off, p1[1] + ny * off)
+        p2 = (p2[0] + nx * off, p2[1] + ny * off)
+        color = ROLES[a.get("role", "neutral")][1] if a.get("role") == "adverse" else "#222222"
+        ax.annotate("", xy=p2, xytext=p1, zorder=4,
+                    arrowprops=dict(arrowstyle="-|>,head_width=0.18,head_length=0.3", color=color, lw=1.1,
+                                    shrinkA=1, shrinkB=1))
+        mx, my = (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2
+        if norm < 0.35:
+            print(f"[warn] edge {e['from']}->{e['to']} is only {norm:.2f} units long; "
+                  f"move the blocks apart so the arrow and its badge are visible", file=sys.stderr)
+        if e.get("label"):
+            # put the label on the side of the normal that points up (or right), clear of the badge
+            sgn = 1 if (ny > 1e-9 or (abs(ny) <= 1e-9 and nx > 0)) else -1
+            if off < 0:
+                sgn = -sgn
+            dist = 0.36 if "step" in e else 0.18
+            lt = ax.text(mx + nx * dist * sgn, my + ny * dist * sgn, e["label"], ha="center", va="center",
+                         fontsize=6.8, color="#333333", zorder=5,
+                         bbox=dict(facecolor="white", edgecolor="none", pad=0.4, alpha=0.85))
+            labels.append(lt)
+        if "step" in e:
+            ax.add_patch(patches.Circle((mx, my), 0.14, transform=ax.transData, facecolor="#D55E00",
+                                        edgecolor="black", linewidth=0.6, zorder=10))
+            badges.append(ax.text(mx, my, str(e["step"]), ha="center", va="center", color="white",
+                                  fontsize=7, fontweight="bold", zorder=11,
+                                  bbox=dict(boxstyle="circle,pad=0.25", facecolor="none", edgecolor="none")))
 
-    # 2. DDAP Module (Prompt Generation)
-    draw_block(ax, 2.2, 2.3, 1.6, 1.1, "DDAP Module", "Dynamic Prompter", bg_color="#E8F4F8", border_color="#0072B2")
-    draw_arrow(ax, 1.6, 2.0, 2.2, 2.7, label="")
-    draw_badge(ax, 1.9, 2.4, "1")
+    # Warn about labels that do not fit their box (measured with the real renderer).
+    fig.canvas.draw()
+    inv = ax.transData.inverted()
+    for b, t in texts:
+        bb = t.get_window_extent()
+        (x0, _), (x1, _) = inv.transform([[bb.x0, bb.y0], [bb.x1, bb.y1]])
+        if x1 - x0 > b["w"] * 0.98:
+            print(f"[warn] text '{t.get_text()}' is wider than block '{b['id']}' "
+                  f"({x1 - x0:.2f} > {b['w']:.2f}); widen the block or shorten the text", file=sys.stderr)
+    # Warn about any edge label / badge overlapping another text element.
+    items = [(f"label '{t.get_text()}'", t) for t in labels] + \
+            [(f"badge {t.get_text()}", t) for t in badges] + \
+            [(f"block text '{t.get_text()}'", t) for _, t in texts]
+    ext = [(name, t.get_window_extent().expanded(1.02, 1.05)) for name, t in items]
+    seen = set()
+    for i, (n1, b1) in enumerate(ext):
+        for n2, b2 in ext[i + 1:]:
+            if n1.startswith("block") and n2.startswith("block"):
+                continue
+            if b1.overlaps(b2) and (n1, n2) not in seen:
+                seen.add((n1, n2))
+                print(f"[warn] {n1} overlaps {n2}; adjust positions or the edge 'offset'", file=sys.stderr)
+    if args.demo:
+        print("[warn] DEMO spec -- never use this figure in a paper", file=sys.stderr)
+    save_figure(fig, args.out)
+    return 0
 
-    # 3. Base Feature Encoder
-    draw_block(ax, 2.2, 0.5, 1.6, 1.1, "Base Encoder", "f_k = Enc(X_k)", bg_color="#FFFFFF", border_color="#333333")
-    draw_arrow(ax, 1.6, 1.9, 2.2, 1.1, label="")
-    draw_badge(ax, 1.9, 1.5, "2")
-
-    # 4. Joint Inference & Classification Head
-    draw_block(ax, 4.4, 1.4, 1.5, 1.1, "Classifier Head", "[f_k, p_k] -> Logits", bg_color="#EBF3FB", border_color="#0072B2")
-    draw_arrow(ax, 3.8, 2.7, 4.4, 2.1, label="Prompt p_k")
-    draw_badge(ax, 4.1, 2.5, "3")
-    draw_arrow(ax, 3.8, 1.1, 4.4, 1.8, label="Feature f_k")
-    draw_badge(ax, 4.1, 1.4, "4")
-
-    # 5. Inter-round PKM Constraint
-    pkm_box = patches.FancyBboxPatch((2.2, 3.5), 1.6, 0.45, boxstyle="round,pad=0.04",
-                                    facecolor="#FDEEE6", edgecolor="#D55E00", linewidth=1.0)
-    ax.add_patch(pkm_box)
-    ax.text(3.0, 3.72, "PKM Regularizer", ha="center", va="center", fontsize=7.2, fontweight="bold", color="#D55E00")
-    ax.annotate("", xy=(3.0, 3.4), xytext=(3.0, 3.5),
-                arrowprops=dict(arrowstyle="->", color="#D55E00", lw=1.0))
-    draw_badge(ax, 3.0, 3.45, "5", bg_color="#D55E00")
-
-    # 6. Aggregation & Model Sync
-    draw_block(ax, 7.3, 1.4, 2.0, 1.2, "Model Aggregation", "FedAvg w = sum(w_k)", bg_color="#EAF6EE", border_color="#009E73")
-    # Uplink arrow
-    draw_arrow(ax, 5.9, 2.2, 7.3, 2.2, label="Local Update w_k")
-    draw_badge(ax, 6.6, 2.45, "6")
-    # Downlink arrow
-    draw_arrow(ax, 7.3, 1.6, 5.9, 1.6, label="Global Model w")
-
-    plt.savefig(output_path, format="pdf", bbox_inches="tight", dpi=300)
-    png_path = output_path.replace(".pdf", ".png")
-    plt.savefig(png_path, format="png", bbox_inches="tight", dpi=300)
-    print(f"Generated architecture PDF: {output_path}")
-    print(f"Generated preview PNG: {png_path}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate publication architecture diagram.")
-    parser.add_argument("--out", type=str, default="fig_architecture.pdf", help="Output PDF file path")
-    args = parser.parse_args()
-    build_architecture_diagram(args.out)
+    sys.exit(main())
