@@ -60,7 +60,7 @@
 
 ### [Autonomous Evolution: 2026-11-23 02:25:49 from MinerU Exemplar: FedPE (Computer Networks 2025)]
 #### Discovered Causal Attributions:
-- `Both ex<sub>p</sub>erimental confi<sub>g</sub>urations indicate that FedPE exhibits enhanced <sub>g</sub>eneralization caabilities as the client scale ex ands attributable to PKM mechanism’s efectiveness in su<sub>pp</sub>ressin<sub>g</sub> feature overwritin<sub>g</sub>.`
+- `Both experimental configurations indicate that FedPE exhibits enhanced generalization capabilities as the client scale expands, attributable to PKM mechanism's effectiveness in suppressing feature overwriting.`
 
 
 ### [Autonomous Evolution: 2026-11-23 02:26:47 from arXiv Query: 'adversarial differential privacy' (3 papers)]

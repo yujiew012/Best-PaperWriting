@@ -94,6 +94,8 @@
   python3 paper/tools/check_float_placement.py paper /tmp/build
   ```
 
+  > 该脚本位于 QEDFL 项目仓库中；本仓库的通用版本为 `skills/top-tier-paper-writing/scripts/floatcheck.sty` + `check_layout.py`（用法见 SKILL.md 第七节）。
+
 - **先记录基线，再改文字。** 比较方法是 `git stash` → 跑一次 → `git stash pop` → 再跑一次，对比两次输出。
 - 本项目的基线：
   - 全文版（16 页）只有 fig:ratio 和 tab:noniid 落后一页。

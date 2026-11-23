@@ -1,40 +1,318 @@
 #!/usr/bin/env python3
 """
-Double-Column LaTeX Paper Layout and Float Placement Checker.
-Scans LaTeX build log and aux files to verify:
-1. Every float appears ON OR BEFORE the physical page of its first citation.
-2. Cross-column floats appear on or after the page following their definition.
-3. Detects potential bottom voids and orphan lines.
+Double-column LaTeX float placement checker.
+
+Reads the position records that ``floatcheck.sty`` (same directory) writes into
+the .aux file, plus the .log file, and checks the three layout rules from
+SKILL.md:
+
+  R1  Every float is on the SAME page as its first reference in running text,
+      and comes BEFORE it in reading order (same column above it, or in the
+      left column when the reference is in the right column; a full-width
+      float at the top of the page always counts as before).
+  R2  A full-width float (figure*/table*) can appear at the earliest on the
+      page AFTER the one where it is defined, so its first reference must fall
+      on that page or later (otherwise: move the definition earlier).
+  R3  Column bottoms should not have large voids (detected heuristically via
+      "Underfull \\vbox ... while \\output is active" in the log).
+
+The log is also scanned for float-related LaTeX warnings ("Float too large",
+"h float specifier changed", "Too many unprocessed floats", rerun requests,
+undefined references).
+
+Not detected (check visually): widows/orphans and short last lines of
+paragraphs -- TeX does not report them in the log.
+
+Usage:
+    # 1) diagnostic build (source untouched):
+    pdflatex -jobname=main "\\RequirePackage{floatcheck}\\input{main}"   # run twice
+    # 2) check:
+    python3 check_layout.py main.aux            # log defaults to main.log
+    python3 check_layout.py build/main.aux --log build/main.log --json report.json
+
+Exit status: 0 = no errors, 1 = at least one rule violation, 2 = usage error.
+Without floatcheck records the script falls back to listing float pages only.
 """
 
-import sys
+import argparse
+import json
 import os
 import re
+import sys
+from dataclasses import dataclass, field, asdict
+from typing import Dict, List, Optional
 
-def parse_citations_and_floats(tex_dir, aux_file):
-    print(f"[Layout Checker] Inspecting directory: {tex_dir}")
-    if not os.path.exists(aux_file):
-        print(f"[Warning] Aux file not found: {aux_file}. Please compile LaTeX first.")
-        return 0
+# ---------------------------------------------------------------------------
+# .aux parsing
+# ---------------------------------------------------------------------------
 
-    with open(aux_file, "r", encoding="utf-8", errors="ignore") as f:
+_BRACES = r"\{((?:[^{}]|\{[^{}]*\})*)\}"
+
+
+def _records(content: str, name: str, nargs: int) -> List[List[str]]:
+    pattern = re.compile(r"\\" + name + _BRACES * nargs)
+    return [list(m) if isinstance(m, tuple) else [m] for m in pattern.findall(content)]
+
+
+@dataclass
+class Pos:
+    page: str        # \thepage as printed (may be roman)
+    phys: int        # physical page (1-based)
+    x: int           # sp from the left edge of the page
+    y: int           # sp from the bottom of the page
+
+    @classmethod
+    def parse(cls, page, phys, x, y):
+        # \ReadonlyShipoutCounter already counts the page being shipped out.
+        return cls(page, max(int(phys), 1), int(x), int(y))
+
+
+@dataclass
+class Geometry:
+    twocolumn: bool = True
+    twoside: bool = False
+    oddleft: int = 0
+    evenleft: int = 0
+    colwidth: int = 0
+    colsep: int = 0
+
+    def column(self, pos: Pos) -> int:
+        if not self.twocolumn or self.colwidth == 0:
+            return 0
+        left = self.evenleft if (self.twoside and pos.phys % 2 == 0) else self.oddleft
+        boundary = left + self.colwidth + self.colsep // 2
+        return 0 if pos.x < boundary else 1
+
+
+@dataclass
+class FloatInfo:
+    label: str
+    ftype: str
+    starred: bool
+    pos: Pos
+    defpos: Optional[Pos] = None
+    first_ref: Optional[Pos] = None
+    status: str = "ok"
+    messages: List[str] = field(default_factory=list)
+
+
+def parse_aux(aux_path: str):
+    with open(aux_path, "r", encoding="utf-8", errors="ignore") as f:
         content = f.read()
+    # Follow \@input{chapter.aux} includes.
+    base = os.path.dirname(aux_path)
+    for inc in re.findall(r"\\@input\{([^}]+)\}", content):
+        p = os.path.join(base, inc)
+        if os.path.exists(p):
+            with open(p, "r", encoding="utf-8", errors="ignore") as f:
+                content += "\n" + f.read()
 
-    # Find float page positions from \newlabel
-    # e.g., \newlabel{fig:framework}{{[1]}{4}{...}}
-    float_pages = {}
-    matches = re.findall(r"\\newlabel\{([^}]+)\}\{\{([^}]*)\}\{([0-9]+)\}", content)
-    for label, num, page in matches:
-        if label.startswith("fig:") or label.startswith("tab:"):
-            float_pages[label] = int(page)
+    geom = None
+    g = _records(content, "FCgeom", 6)
+    if g:
+        tc, ts, odd, even, cw, cs = g[-1]
+        geom = Geometry(tc == "1", ts == "1", int(odd), int(even), int(cw), int(cs))
 
-    print(f"Discovered {len(float_pages)} labeled floats in {aux_file}:")
-    for k, v in float_pages.items():
-        print(f"  - {k} -> Page {v}")
+    defs: Dict[str, Pos] = {}
+    for seq, _t, _s, page, phys, x, y in _records(content, "FCdef", 7):
+        defs[seq] = Pos.parse(page, phys, x, y)
 
-    return len(float_pages)
+    floats: Dict[str, FloatInfo] = {}
+    for label, seq, ftype, star, page, phys, x, y in _records(content, "FCfloat", 8):
+        if label in floats:      # \label executed twice (e.g. caption measured)
+            continue
+        floats[label] = FloatInfo(label, ftype, star == "1",
+                                  Pos.parse(page, phys, x, y), defs.get(seq))
+
+    refs: Dict[str, List[Pos]] = {}
+    for labels, page, phys, x, y in _records(content, "FCref", 5):
+        p = Pos.parse(page, phys, x, y)
+        for lab in labels.split(","):
+            refs.setdefault(lab.strip(), []).append(p)
+
+    # Plain \newlabel entries (fallback mode, and labels outside floatcheck).
+    newlabels = {}
+    for label, body in re.findall(r"\\newlabel\{([^}]+)\}\{\{[^}]*\}\{([^}]*)\}", content):
+        newlabels[label] = body
+    return geom, floats, refs, newlabels
+
+
+# ---------------------------------------------------------------------------
+# rules
+# ---------------------------------------------------------------------------
+
+def reading_key(pos: Pos, geom: Geometry):
+    return (pos.phys, geom.column(pos), -pos.y)
+
+
+def check_floats(geom: Geometry, floats: Dict[str, FloatInfo], refs: Dict[str, List[Pos]]):
+    for fl in floats.values():
+        rlist = refs.get(fl.label, [])
+        if not rlist:
+            fl.status = "warning"
+            fl.messages.append("never referenced in running text")
+            continue
+        fl.first_ref = min(rlist, key=lambda p: reading_key(p, geom))
+        r, f = fl.first_ref, fl.pos
+
+        # R2: full-width floats
+        if fl.starred and fl.defpos is not None:
+            earliest = fl.defpos.phys + 1
+            if r.phys < earliest:
+                fl.status = "error"
+                fl.messages.append(
+                    f"R2: defined on p.{fl.defpos.page}, so it cannot appear before "
+                    f"p.{earliest} (physical), but is first referenced on p.{r.page}; "
+                    f"move \\begin{{{fl.ftype}*}} at least one page before the reference")
+            elif f.phys > earliest and f.phys > r.phys:
+                fl.messages.append(
+                    f"deferred to p.{f.page} although p.{earliest} was possible "
+                    f"(float queue congestion or [p] placement)")
+
+        # R1: same page, before in reading order
+        if f.phys > r.phys:
+            fl.status = "error"
+            fl.messages.append(
+                f"R1: placed on p.{f.page}, AFTER its first reference on p.{r.page}")
+        elif f.phys < r.phys:
+            if fl.status != "error":
+                fl.status = "warning"
+            fl.messages.append(
+                f"R1: placed on p.{f.page}, a page BEFORE its first reference on p.{r.page}")
+        elif not fl.starred:
+            fc, rc = geom.column(f), geom.column(r)
+            if fc > rc or (fc == rc and f.y < r.y):
+                if fl.status != "error":
+                    fl.status = "warning"
+                where = "right column" if fc > rc else "below the reference"
+                fl.messages.append(
+                    f"R1: same page (p.{f.page}) but after the reference in reading "
+                    f"order ({where})")
+
+
+# ---------------------------------------------------------------------------
+# .log scanning
+# ---------------------------------------------------------------------------
+
+_LOG_PATTERNS = [
+    (re.compile(r"Underfull \\vbox \(badness (\d+)\) has occurred while \\output is active"),
+     "R3: column/page stretched to fill (badness {0}) -- likely a void at the column bottom"),
+    (re.compile(r"LaTeX Warning: Float too large for page by ([\d.]+pt)"),
+     "float too large for page by {0}"),
+    (re.compile(r"LaTeX Warning: `(!?h)' float specifier changed to `(!?ht)'"),
+     "`{0}' float specifier changed to `{1}' (float could not go here)"),
+    (re.compile(r"Too many unprocessed floats"),
+     "too many unprocessed floats (float queue overflow)"),
+]
+_RERUN = re.compile(r"Label\(s\) may have changed|Rerun to get cross-references right")
+_UNDEF = re.compile(r"There were undefined references")
+
+
+def scan_log(log_path: str):
+    issues, notes, errors = [], [], []
+    if not os.path.exists(log_path):
+        notes.append(f"log not found: {log_path}")
+        return issues, notes, errors
+    with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
+        log = f.read()
+    errors = re.findall(r"^! (.+)$", log, flags=re.M)
+    # Track shipped pages: TeX prints "[<page>" when a page is shipped out.
+    shipped = 0
+    events = sorted(
+        [(m.start(), "page", m) for m in re.finditer(r"(?<![\w\\])\[(\d+)(?=[\s\]{<])", log)] +
+        [(m.start(), i, m) for i, (pat, _) in enumerate(_LOG_PATTERNS) for m in pat.finditer(log)],
+        key=lambda e: e[0])
+    for _, kind, m in events:
+        if kind == "page":
+            shipped += 1
+        else:
+            msg = _LOG_PATTERNS[kind][1].format(*m.groups())
+            issues.append({"page_approx": shipped + 1, "message": msg})
+    if _RERUN.search(log):
+        notes.append("LaTeX asks for a rerun: positions may be stale -- compile again")
+    if _UNDEF.search(log):
+        notes.append("there are undefined references")
+    return issues, notes, errors
+
+
+# ---------------------------------------------------------------------------
+# main
+# ---------------------------------------------------------------------------
+
+def resolve_paths(target: str, log: Optional[str]):
+    stem, ext = os.path.splitext(target)
+    if os.path.isdir(target):
+        cands = [f for f in os.listdir(target) if f.endswith(".aux")]
+        if len(cands) != 1:
+            sys.exit(f"[error] expected exactly one .aux in {target}, found {cands}; pass it explicitly")
+        aux = os.path.join(target, cands[0])
+    elif ext in (".tex", ".log", ".pdf", ""):
+        aux = stem + ".aux"
+    else:
+        aux = target
+    return aux, log or os.path.splitext(aux)[0] + ".log"
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="Check float placement in a compiled LaTeX paper.")
+    ap.add_argument("target", help="main.aux (or main.tex / build dir)")
+    ap.add_argument("--log", help="LaTeX log file (default: next to the .aux)")
+    ap.add_argument("--json", help="also write the report as JSON to this path")
+    args = ap.parse_args(argv)
+
+    aux, log = resolve_paths(args.target, args.log)
+    if not os.path.exists(aux):
+        print(f"[error] aux file not found: {aux} (compile the paper first)", file=sys.stderr)
+        return 2
+
+    geom, floats, refs, newlabels = parse_aux(aux)
+    log_issues, notes, tex_errors = scan_log(log)
+    report = {"aux": aux, "log": log, "mode": "floatcheck" if geom else "fallback",
+              "floats": [], "log_issues": log_issues, "notes": notes, "tex_errors": tex_errors}
+
+    print(f"[Layout Checker] {aux}")
+    if tex_errors:
+        print(f"[error] the LaTeX run reported {len(tex_errors)} error(s); positions are unreliable. First: "
+              f"{tex_errors[0]}")
+    if geom is None:
+        print("[warning] no floatcheck records found -- only listing float pages.\n"
+              "          Build with floatcheck.sty for real checks, e.g.:\n"
+              "          pdflatex -jobname=main \"\\RequirePackage{floatcheck}\\input{main}\"")
+        for lab, page in newlabels.items():
+            if re.match(r"(fig|tab|table|figure)[:.-]", lab):
+                print(f"  - {lab:30s} p.{page}")
+                report["floats"].append({"label": lab, "page": page})
+        n_err = 0
+    else:
+        check_floats(geom, floats, refs)
+        order = sorted(floats.values(), key=lambda fl: reading_key(fl.pos, geom))
+        n_err = sum(fl.status == "error" for fl in order)
+        n_warn = sum(fl.status == "warning" for fl in order)
+        mark = {"ok": " ok ", "warning": "WARN", "error": "FAIL"}
+        print(f"{len(order)} floats, {n_err} errors, {n_warn} warnings "
+              f"({'two' if geom.twocolumn else 'one'}-column layout)\n")
+        for fl in order:
+            ref = f"first ref p.{fl.first_ref.page}" if fl.first_ref else "no ref"
+            kind = fl.ftype + ("*" if fl.starred else "")
+            print(f"  [{mark[fl.status]}] {fl.label:30s} {kind:8s} on p.{fl.pos.page:4s} {ref}")
+            for m in fl.messages:
+                print(f"           - {m}")
+            d = asdict(fl)
+            report["floats"].append(d)
+
+    if log_issues:
+        print("\nLog findings (page numbers approximate):")
+        for it in log_issues:
+            print(f"  - ~p.{it['page_approx']}: {it['message']}")
+    for n in notes:
+        print(f"[note] {n}")
+    print("\nNot checked automatically: widows/orphans and 1-2 word last lines -- inspect the PDF.")
+
+    if args.json:
+        with open(args.json, "w", encoding="utf-8") as f:
+            json.dump(report, f, indent=2, ensure_ascii=False)
+    return 1 if (n_err or tex_errors) else 0
+
 
 if __name__ == "__main__":
-    tex_path = sys.argv[1] if len(sys.argv) > 1 else "."
-    aux_path = sys.argv[2] if len(sys.argv) > 2 else "main.aux"
-    parse_citations_and_floats(tex_path, aux_path)
+    sys.exit(main())
