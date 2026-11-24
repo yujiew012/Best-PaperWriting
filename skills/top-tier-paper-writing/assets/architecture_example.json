@@ -1,0 +1,136 @@
+{
+  "_comment": "Example spec (FedPE-style federated pipeline). Copy, then replace blocks/edges with your system.",
+  "layout": "double",
+  "height": 2.6,
+  "canvas": [
+    10,
+    4
+  ],
+  "groups": [
+    {
+      "label": "Edge client k",
+      "x": 0.15,
+      "y": 0.15,
+      "w": 6.0,
+      "h": 3.7,
+      "role": "neutral"
+    },
+    {
+      "label": "Aggregation server",
+      "x": 6.75,
+      "y": 0.15,
+      "w": 3.1,
+      "h": 3.7,
+      "role": "support"
+    }
+  ],
+  "blocks": [
+    {
+      "id": "data",
+      "label": "Local data",
+      "sub": "batch X_k",
+      "x": 0.4,
+      "y": 1.45,
+      "w": 1.15,
+      "h": 1.0,
+      "role": "neutral"
+    },
+    {
+      "id": "ddap",
+      "label": "DDAP",
+      "sub": "dynamic prompter",
+      "x": 2.1,
+      "y": 2.12,
+      "w": 1.6,
+      "h": 0.8,
+      "role": "core"
+    },
+    {
+      "id": "enc",
+      "label": "Base encoder",
+      "sub": "f_k = Enc(X_k)",
+      "x": 2.1,
+      "y": 0.55,
+      "w": 1.6,
+      "h": 0.95,
+      "role": "neutral"
+    },
+    {
+      "id": "pkm",
+      "label": "PKM regularizer",
+      "x": 2.1,
+      "y": 3.45,
+      "w": 1.6,
+      "h": 0.32,
+      "role": "adverse"
+    },
+    {
+      "id": "head",
+      "label": "Classifier head",
+      "sub": "[f_k, p_k] -> logits",
+      "x": 4.3,
+      "y": 1.45,
+      "w": 1.6,
+      "h": 1.0,
+      "role": "core"
+    },
+    {
+      "id": "agg",
+      "label": "Model aggregation",
+      "sub": "w = sum_k n_k w_k / n",
+      "x": 7.25,
+      "y": 1.4,
+      "w": 2.15,
+      "h": 1.1,
+      "role": "support"
+    }
+  ],
+  "edges": [
+    {
+      "from": "data",
+      "to": "ddap",
+      "step": 1
+    },
+    {
+      "from": "data",
+      "to": "enc",
+      "step": 2
+    },
+    {
+      "from": "ddap",
+      "to": "head",
+      "label": "prompt p_k",
+      "step": 3
+    },
+    {
+      "from": "enc",
+      "to": "head",
+      "label": "feature f_k",
+      "step": 4
+    },
+    {
+      "from": "pkm",
+      "to": "ddap",
+      "from_side": "bottom",
+      "to_side": "top",
+      "step": 5
+    },
+    {
+      "from": "head",
+      "to": "agg",
+      "label": "local update w_k",
+      "from_side": "right",
+      "to_side": "left",
+      "offset": 0.25,
+      "step": 6
+    },
+    {
+      "from": "agg",
+      "to": "head",
+      "label": "global model w",
+      "from_side": "left",
+      "to_side": "right",
+      "offset": 0.25
+    }
+  ]
+}

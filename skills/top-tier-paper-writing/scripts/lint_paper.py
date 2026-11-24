@@ -1,0 +1,310 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.8"
+# dependencies = []
+# ///
+"""Static checks for a LaTeX manuscript (stdlib only, no compilation needed).
+
+Follows \\input / \\include / \\subfile from the main file and reports:
+
+  E001  float's main \\label comes before its \\caption (wrong number)       error
+  E003  \\ref / \\cref / \\autoref to a label that is never defined           error
+  W002  float without \\caption                                             warning
+  W003  float without \\label                                               warning
+  W101  float label never referenced in the text                            warning
+  W201  figure caption looks like Title Case (IEEE: sentence case)          warning
+  W202  table caption looks like sentence case (IEEE: Title Case)           warning
+  W203  caption states a conclusion ("outperforms", "shows that", ...)       warning
+  W301  negative \\vspace / \\vskip or \\enlargethispage used to squeeze layout warning
+  W302  vague or hedging phrase ("we hope", "very", "clearly", ...)          warning
+  W303  paragraph quotes >= N numbers (reads the table instead of analysing) warning
+  W304  "Fig. \\ref" with a breakable space (use Fig.~\\ref)                  warning
+  W401  abstract length outside 150-250 words                               warning
+  W402  conclusion length outside 120-200 words                             warning
+
+    uv run lint_paper.py paper/main.tex
+    uv run lint_paper.py paper/main.tex --caption-style sentence --json lint.json
+    uv run lint_paper.py paper/main.tex --disable W302,W304 --strict
+
+Exit codes: 0 no errors (warnings allowed unless --strict), 1 errors, 2 usage error.
+Rule rationale and fixes: references/lint_rules.md.
+"""
+import argparse
+import bisect
+import json
+import os
+import re
+import sys
+
+REF_CMDS = r"(?:ref|autoref|cref|Cref|vref|Vref|eqref|pageref|labelcref|nameref)\*?"
+FLOAT_ENVS = ("figure", "figure*", "table", "table*", "wrapfigure", "wraptable")
+VAGUE = [
+    r"\bwe hope\b", r"\bvery\b", r"\bquite\b", r"\bobviously\b", r"\bclearly\b", r"\bit is worth noting\b",
+    r"\bit should be noted\b", r"\bin order to\b", r"\ba lot of\b", r"\bextremely\b", r"\bhuge\b",
+    r"\bwe believe\b", r"\bto some extent\b", r"\bsomewhat\b", r"\bbasically\b", r"\bactually\b",
+]
+CONCLUSION_WORDS = [
+    r"\boutperform\w*", r"\bsuperior\b", r"\bdemonstrat\w+", r"\bshows? that\b", r"\bclearly\b",
+    r"\bsignificantly (?:better|higher|lower|worse)\b", r"\bbetter than\b", r"\bproves?\b", r"\bbeats?\b",
+]
+SMALL_WORDS = {"a", "an", "the", "and", "but", "or", "nor", "for", "so", "yet", "as", "at", "by", "in", "of",
+               "on", "to", "up", "via", "vs", "per", "with", "from", "into", "over", "than", "under"}
+
+
+# ---------------------------------------------------------------------------
+# source loading with file:line mapping
+# ---------------------------------------------------------------------------
+
+def strip_comment(line):
+    out, i = [], 0
+    while i < len(line):
+        c = line[i]
+        if c == "\\" and i + 1 < len(line):
+            out.append(line[i:i + 2])
+            i += 2
+            continue
+        if c == "%":
+            break
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
+def load(path, seen=None):
+    """Return list of (file, lineno, text) with inputs expanded and comments removed."""
+    seen = seen or set()
+    path = os.path.abspath(path)
+    if path in seen:
+        return []
+    seen.add(path)
+    base = os.path.dirname(path)
+    out = []
+    with open(path, encoding="utf-8", errors="replace") as f:
+        for no, line in enumerate(f, 1):
+            line = strip_comment(line.rstrip("\n"))
+            m = re.search(r"\\(?:input|include|subfile)\{([^}]+)\}", line)
+            if m:
+                inc = os.path.join(base, m.group(1).strip())
+                if not inc.endswith(".tex"):
+                    inc += ".tex"
+                before, after = line[:m.start()], line[m.end():]
+                if before.strip():
+                    out.append((path, no, before))
+                if os.path.exists(inc):
+                    out.extend(load(inc, seen))
+                else:
+                    out.append((path, no, f"%MISSING-INPUT {m.group(1)}"))
+                if after.strip():
+                    out.append((path, no, after))
+                continue
+            out.append((path, no, line))
+    return out
+
+
+class Doc:
+    def __init__(self, lines, root):
+        self.root = root
+        self.text = "\n".join(t for _, _, t in lines)
+        self.starts, pos = [], 0
+        for _, _, t in lines:
+            self.starts.append(pos)
+            pos += len(t) + 1
+        self.lines = lines
+
+    def where(self, offset):
+        i = max(bisect.bisect_right(self.starts, offset) - 1, 0)
+        f, n, _ = self.lines[i]
+        return f"{os.path.relpath(f, self.root)}:{n}"
+
+
+def braced(text, i):
+    """Given text[i] == '{', return (content, end_index_after_brace)."""
+    depth, j = 0, i
+    while j < len(text):
+        if text[j] == "\\":
+            j += 2
+            continue
+        if text[j] == "{":
+            depth += 1
+        elif text[j] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[i + 1:j], j + 1
+        j += 1
+    return text[i + 1:], len(text)
+
+
+def plain(tex):
+    """Rough LaTeX -> plain text for word counts and caption analysis."""
+    t = re.sub(r"\$[^$]*\$", " X ", tex)
+    t = re.sub(r"\\(?:cite\w*|ref|cref|Cref|autoref|label|eqref)\*?(\[[^\]]*\])?\{[^}]*\}", " ", t)
+    t = re.sub(r"\\[a-zA-Z@]+\*?(\[[^\]]*\])?", " ", t)
+    t = t.replace("{", " ").replace("}", " ").replace("~", " ")
+    return re.sub(r"\s+", " ", t).strip()
+
+
+# ---------------------------------------------------------------------------
+# checks
+# ---------------------------------------------------------------------------
+
+def caption_case_issue(text, kind):
+    words = re.findall(r"[A-Za-z][A-Za-z'-]*", plain(text))
+    cand = []
+    for k, w in enumerate(words[1:], 1):
+        if len(w) < 4 or w.lower() in SMALL_WORDS:
+            continue
+        if w.isupper() or re.search(r"[a-z][A-Z]", w) or re.search(r"\d", w):
+            continue   # acronyms / CamelCase method names are proper nouns
+        cand.append(w[0].isupper())
+    if len(cand) < 3:
+        return False
+    ratio = sum(cand) / len(cand)
+    return ratio >= 0.6 if kind == "title-in-figure" else ratio <= 0.4
+
+
+def run(main_tex, caption_style, num_threshold, disabled):
+    root = os.path.dirname(os.path.abspath(main_tex))
+    doc = Doc(load(main_tex), root)
+    text = doc.text
+    issues = []
+
+    def add(code, offset, msg):
+        if code not in disabled:
+            issues.append({"code": code, "where": doc.where(offset), "message": msg})
+
+    for m in re.finditer(r"%MISSING-INPUT (.+)", text):
+        add("E003", m.start(), f"\\input file not found: {m.group(1)}")
+
+    body_start = text.find("\\begin{document}")
+    body_start = body_start if body_start >= 0 else 0
+
+    # labels and references
+    labels = {m.group(1).strip(): m.start() for m in re.finditer(r"\\label(?:\[[^\]]*\])?\{([^}]+)\}", text)}
+    refs = {}
+    for m in re.finditer(r"\\" + REF_CMDS + r"\{([^}]+)\}", text):
+        for lab in m.group(1).split(","):
+            refs.setdefault(lab.strip(), []).append(m.start())
+
+    # floats
+    float_labels = []
+    env_re = "|".join(re.escape(e) for e in FLOAT_ENVS)
+    for m in re.finditer(r"\\begin\{(" + env_re + r")\}", text):
+        env = m.group(1)
+        end = text.find("\\end{" + env + "}", m.end())
+        end = end if end >= 0 else len(text)
+        block = text[m.end():end]
+        caps = [c for c in re.finditer(r"\\caption(?:\[[^\]]*\])?(?=\{)", block)]
+        labs = [l for l in re.finditer(r"\\label(?:\[[^\]]*\])?\{([^}]+)\}", block)]
+        kind = "figure" if "figure" in env else "table"
+        if not caps:
+            add("W002", m.start(), f"{env} without \\caption")
+        if not labs:
+            add("W003", m.start(), f"{env} without \\label")
+        if caps and labs:
+            last_cap = caps[-1].start()
+            after = [l for l in labs if l.start() > last_cap]
+            if not after:
+                add("E001", m.end() + labs[-1].start(),
+                    f"\\label{{{labs[-1].group(1)}}} precedes \\caption: move it after the caption")
+            main_label = (after or labs)[0].group(1).strip()
+            float_labels.append((main_label, m.start()))
+        for c in caps:
+            cap_text, _ = braced(block, c.end())
+            off = m.end() + c.start()
+            if caption_style == "ieee":
+                if kind == "figure" and caption_case_issue(cap_text, "title-in-figure"):
+                    add("W201", off, "figure caption looks like Title Case; IEEE figures use sentence case")
+                if kind == "table" and caption_case_issue(cap_text, "sentence-in-table"):
+                    add("W202", off, "table caption looks like sentence case; IEEE tables use Title Case")
+            elif caption_style == "sentence" and caption_case_issue(cap_text, "title-in-figure"):
+                add("W201", off, f"{kind} caption looks like Title Case; this venue uses sentence case")
+            for pat in CONCLUSION_WORDS:
+                w = re.search(pat, plain(cap_text), re.I)
+                if w:
+                    add("W203", off, f"caption states a conclusion ('{w.group(0)}'); keep conclusions in the text")
+                    break
+
+    for lab, pos in refs.items():
+        if lab not in labels and not lab.startswith("#"):
+            add("E003", pos[0], f"reference to undefined label '{lab}'")
+    for lab, pos in float_labels:
+        if lab not in refs:
+            add("W101", pos, f"float '{lab}' is never referenced in the text")
+
+    body = text[body_start:]
+    for m in re.finditer(r"\\vspace\*?\{\s*-|\\vskip\s*-|\\enlargethispage", body):
+        add("W301", body_start + m.start(), "layout squeezing command; fix float placement with the "
+                                            "repair ladder in references/layout_and_typesetting.md")
+    for pat in VAGUE:
+        for m in re.finditer(pat, body, re.I):
+            add("W302", body_start + m.start(), f"vague/hedging phrase '{m.group(0)}'")
+    for m in re.finditer(r"\b(Fig\.|Figs\.|Figure|Table|Tables|Section|Sec\.|Eq\.|Algorithm|Appendix) "
+                         r"\\(?:ref|cref|autoref)\{", body):
+        add("W304", body_start + m.start(), f"use '{m.group(1)}~\\ref' (non-breaking space)")
+
+    # paragraphs that dump numbers (outside floats / tabulars / math displays)
+    stripped = re.sub(r"\\begin\{(" + env_re + r"|tabular\*?|table|equation\*?|align\*?)\}.*?\\end\{\1\}",
+                      lambda mm: " " * len(mm.group(0)), body, flags=re.S)
+    pos = 0
+    for para in re.split(r"\n\s*\n", stripped):
+        nums = re.findall(r"(?<![\w.])\d+(?:\.\d+)?\s*(?:\\%|%|pp|×|x\b)|(?<![\w.])\d+\.\d+", para)
+        if len(nums) >= num_threshold:
+            add("W303", body_start + pos + (len(para) - len(para.lstrip())),
+                f"paragraph quotes {len(nums)} numbers; keep 1-3 key numbers and let the table carry the rest")
+        pos += len(para) + 2
+
+    # abstract / conclusion length
+    m = re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}", text, re.S)
+    if m:
+        n = len(plain(m.group(1)).split())
+        if not 150 <= n <= 250:
+            add("W401", m.start(), f"abstract has {n} words (target 150-250)")
+    m = re.search(r"\\section\*?\{\s*Conclusions?[^}]*\}(.*?)(?=\\section|\\appendix|\\bibliography|"
+                  r"\\printbibliography|\\end\{document\})", text, re.S | re.I)
+    if m:
+        n = len(plain(m.group(1)).split())
+        if not 120 <= n <= 200:
+            add("W402", m.start(), f"conclusion has {n} words (target 120-200, two paragraphs)")
+
+    issues.sort(key=lambda i: (i["code"][0] != "E", i["code"], i["where"]))
+    return issues
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("main_tex")
+    ap.add_argument("--caption-style", choices=["ieee", "sentence", "off"], default="ieee",
+                    help="ieee: figures sentence case, tables Title Case; sentence: both sentence case")
+    ap.add_argument("--numbers", type=int, default=6, help="W303 threshold (numbers per paragraph)")
+    ap.add_argument("--disable", default="", help="comma-separated codes to skip, e.g. W302,W304")
+    ap.add_argument("--strict", action="store_true", help="exit 1 on warnings too")
+    ap.add_argument("--max-per-code", type=int, default=15, help="print at most N findings per code")
+    ap.add_argument("--json", help="write all findings as JSON")
+    args = ap.parse_args(argv)
+    if not os.path.isfile(args.main_tex):
+        print(f"[error] not found: {args.main_tex}", file=sys.stderr)
+        return 2
+
+    issues = run(args.main_tex, args.caption_style, args.numbers,
+                 {c.strip() for c in args.disable.split(",") if c.strip()})
+    errors = [i for i in issues if i["code"].startswith("E")]
+    warns = [i for i in issues if i["code"].startswith("W")]
+    shown = {}
+    for i in issues:
+        shown[i["code"]] = shown.get(i["code"], 0) + 1
+        if shown[i["code"]] <= args.max_per_code:
+            print(f"{i['code']} {i['where']}: {i['message']}")
+    for code, n in shown.items():
+        if n > args.max_per_code:
+            print(f"{code}: ... {n - args.max_per_code} more (see --json)")
+    print(f"\n{len(errors)} error(s), {len(warns)} warning(s)")
+    if args.json:
+        with open(args.json, "w", encoding="utf-8") as f:
+            json.dump(issues, f, indent=2, ensure_ascii=False)
+    if errors or (args.strict and warns):
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

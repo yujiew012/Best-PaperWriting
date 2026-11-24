@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.8"
+# dependencies = []
+# ///
 """
 Domain Adaptive Alignment Module (自适应领域识别与微调对齐模块)
 Part of top-tier-paper-writing skill.

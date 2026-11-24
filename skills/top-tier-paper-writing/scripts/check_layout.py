@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.8"
+# dependencies = []
+# ///
 """
 Double-column LaTeX float placement checker.
 
@@ -257,7 +261,10 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Check float placement in a compiled LaTeX paper.")
     ap.add_argument("target", help="main.aux (or main.tex / build dir)")
     ap.add_argument("--log", help="LaTeX log file (default: next to the .aux)")
-    ap.add_argument("--json", help="also write the report as JSON to this path")
+    ap.add_argument("--json", "--save-baseline", dest="json",
+                    help="write the report as JSON (use it later as a --compare baseline)")
+    ap.add_argument("--compare", metavar="BASELINE_JSON",
+                    help="compare with a saved report; exit 1 only if the layout got worse")
     args = ap.parse_args(argv)
 
     aux, log = resolve_paths(args.target, args.log)
@@ -267,7 +274,7 @@ def main(argv=None):
 
     geom, floats, refs, newlabels = parse_aux(aux)
     log_issues, notes, tex_errors = scan_log(log)
-    report = {"aux": aux, "log": log, "mode": "floatcheck" if geom else "fallback",
+    report = {"aux": aux, "log": log, "mode": "floatcheck" if geom else "fallback", "pages": count_pages(log),
               "floats": [], "log_issues": log_issues, "notes": notes, "tex_errors": tex_errors}
 
     print(f"[Layout Checker] {aux}")
@@ -308,10 +315,59 @@ def main(argv=None):
         print(f"[note] {n}")
     print("\nNot checked automatically: widows/orphans and 1-2 word last lines -- inspect the PDF.")
 
+    if report["pages"]:
+        print(f"Total pages: {report['pages']}")
     if args.json:
         with open(args.json, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
+    if args.compare:
+        return compare(report, args.compare) or (1 if tex_errors else 0)
     return 1 if (n_err or tex_errors) else 0
+
+
+def count_pages(log_path):
+    try:
+        with open(log_path, encoding="utf-8", errors="ignore") as f:
+            m = re.search(r"Output written on .*?\((\d+) pages?", f.read(), re.S)
+        return int(m.group(1)) if m else None
+    except OSError:
+        return None
+
+
+def compare(report, baseline_path):
+    """Print the difference to a baseline report; return 1 if the layout got worse."""
+    rank = {"ok": 0, "warning": 1, "error": 2}
+    try:
+        with open(baseline_path, encoding="utf-8") as f:
+            base = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"[error] cannot read baseline {baseline_path}: {e}", file=sys.stderr)
+        return 2
+    old = {fl["label"]: fl.get("status", "ok") for fl in base.get("floats", [])}
+    new = {fl["label"]: fl.get("status", "ok") for fl in report.get("floats", [])}
+    worse, better = [], []
+    for lab in sorted(set(old) | set(new)):
+        a, b = old.get(lab), new.get(lab)
+        if a is None or b is None:
+            print(f"  [diff] {lab}: {'added' if a is None else 'REMOVED (check the float was not deleted)'}")
+            if b is None:
+                worse.append(lab)
+            continue
+        if rank[b] > rank[a]:
+            worse.append(lab)
+            print(f"  [WORSE] {lab}: {a} -> {b}")
+        elif rank[b] < rank[a]:
+            better.append(lab)
+            print(f"  [better] {lab}: {a} -> {b}")
+    n_old = sum(s == "error" for s in old.values())
+    n_new = sum(s == "error" for s in new.values())
+    print(f"\nCompared with {baseline_path}: FAIL {n_old} -> {n_new}; "
+          f"{len(better)} improved, {len(worse)} worse")
+    if base.get("pages") and report.get("pages") and report["pages"] != base["pages"]:
+        print(f"[note] page count changed: {base['pages']} -> {report['pages']}")
+    regressed = bool(worse) or n_new > n_old
+    print("RESULT: " + ("REGRESSION -- revert or fix before continuing" if regressed else "no regression"))
+    return 1 if regressed else 0
 
 
 if __name__ == "__main__":

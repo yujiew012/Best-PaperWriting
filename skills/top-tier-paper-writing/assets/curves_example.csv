@@ -1,0 +1,190 @@
+method,x,seed,value
+FedPE (Ours),0,0,44.8
+FedPE (Ours),5,0,58.17
+FedPE (Ours),10,0,66.72
+FedPE (Ours),15,0,73.19
+FedPE (Ours),20,0,77.39
+FedPE (Ours),25,0,81.33
+FedPE (Ours),30,0,84.8
+FedPE (Ours),35,0,85.98
+FedPE (Ours),40,0,87.7
+FedPE (Ours),45,0,87.96
+FedPE (Ours),50,0,88.71
+FedPE (Ours),55,0,89.0
+FedPE (Ours),60,0,87.84
+FedPE (Ours),65,0,90.09
+FedPE (Ours),70,0,89.98
+FedPE (Ours),75,0,90.1
+FedPE (Ours),80,0,88.43
+FedPE (Ours),85,0,88.45
+FedPE (Ours),90,0,89.18
+FedPE (Ours),95,0,89.55
+FedPE (Ours),100,0,90.19
+FedPE (Ours),0,1,44.96
+FedPE (Ours),5,1,58.17
+FedPE (Ours),10,1,66.38
+FedPE (Ours),15,1,73.69
+FedPE (Ours),20,1,78.45
+FedPE (Ours),25,1,80.97
+FedPE (Ours),30,1,85.28
+FedPE (Ours),35,1,86.08
+FedPE (Ours),40,1,87.83
+FedPE (Ours),45,1,87.26
+FedPE (Ours),50,1,87.8
+FedPE (Ours),55,1,88.57
+FedPE (Ours),60,1,89.09
+FedPE (Ours),65,1,89.92
+FedPE (Ours),70,1,89.78
+FedPE (Ours),75,1,89.34
+FedPE (Ours),80,1,89.02
+FedPE (Ours),85,1,89.43
+FedPE (Ours),90,1,90.87
+FedPE (Ours),95,1,89.27
+FedPE (Ours),100,1,90.14
+FedPE (Ours),0,2,45.34
+FedPE (Ours),5,2,56.56
+FedPE (Ours),10,2,66.94
+FedPE (Ours),15,2,74.49
+FedPE (Ours),20,2,76.53
+FedPE (Ours),25,2,81.24
+FedPE (Ours),30,2,83.83
+FedPE (Ours),35,2,84.98
+FedPE (Ours),40,2,87.27
+FedPE (Ours),45,2,87.71
+FedPE (Ours),50,2,87.22
+FedPE (Ours),55,2,89.51
+FedPE (Ours),60,2,89.71
+FedPE (Ours),65,2,90.17
+FedPE (Ours),70,2,90.73
+FedPE (Ours),75,2,89.99
+FedPE (Ours),80,2,89.88
+FedPE (Ours),85,2,88.8
+FedPE (Ours),90,2,90.38
+FedPE (Ours),95,2,89.43
+FedPE (Ours),100,2,89.58
+pFedPG,0,0,39.1
+pFedPG,5,0,47.71
+pFedPG,10,0,55.04
+pFedPG,15,0,63.24
+pFedPG,20,0,62.73
+pFedPG,25,0,67.26
+pFedPG,30,0,72.81
+pFedPG,35,0,77.07
+pFedPG,40,0,77.78
+pFedPG,45,0,75.71
+pFedPG,50,0,76.13
+pFedPG,55,0,81.55
+pFedPG,60,0,80.81
+pFedPG,65,0,80.98
+pFedPG,70,0,84.73
+pFedPG,75,0,85.41
+pFedPG,80,0,84.4
+pFedPG,85,0,84.87
+pFedPG,90,0,85.42
+pFedPG,95,0,87.38
+pFedPG,100,0,86.1
+pFedPG,0,1,41.78
+pFedPG,5,1,49.98
+pFedPG,10,1,53.48
+pFedPG,15,1,63.23
+pFedPG,20,1,67.21
+pFedPG,25,1,70.24
+pFedPG,30,1,69.49
+pFedPG,35,1,73.95
+pFedPG,40,1,78.18
+pFedPG,45,1,75.84
+pFedPG,50,1,79.63
+pFedPG,55,1,82.54
+pFedPG,60,1,79.95
+pFedPG,65,1,85.07
+pFedPG,70,1,84.09
+pFedPG,75,1,83.53
+pFedPG,80,1,84.65
+pFedPG,85,1,85.47
+pFedPG,90,1,84.95
+pFedPG,95,1,86.71
+pFedPG,100,1,84.18
+pFedPG,0,2,40.38
+pFedPG,5,2,50.72
+pFedPG,10,2,55.88
+pFedPG,15,2,59.98
+pFedPG,20,2,67.2
+pFedPG,25,2,71.64
+pFedPG,30,2,71.78
+pFedPG,35,2,72.83
+pFedPG,40,2,76.71
+pFedPG,45,2,78.34
+pFedPG,50,2,79.46
+pFedPG,55,2,83.12
+pFedPG,60,2,80.38
+pFedPG,65,2,84.55
+pFedPG,70,2,81.36
+pFedPG,75,2,82.58
+pFedPG,80,2,85.11
+pFedPG,85,2,86.19
+pFedPG,90,2,86.06
+pFedPG,95,2,85.51
+pFedPG,100,2,85.39
+FedAvg,0,0,37.38
+FedAvg,5,0,48.39
+FedAvg,10,0,54.27
+FedAvg,15,0,61.44
+FedAvg,20,0,66.88
+FedAvg,25,0,69.11
+FedAvg,30,0,73.87
+FedAvg,35,0,75.59
+FedAvg,40,0,80.94
+FedAvg,45,0,78.07
+FedAvg,50,0,77.24
+FedAvg,55,0,73.45
+FedAvg,60,0,76.73
+FedAvg,65,0,85.42
+FedAvg,70,0,84.59
+FedAvg,75,0,82.07
+FedAvg,80,0,81.08
+FedAvg,85,0,71.82
+FedAvg,90,0,81.41
+FedAvg,95,0,87.06
+FedAvg,100,0,83.02
+FedAvg,0,1,37.6
+FedAvg,5,1,45.88
+FedAvg,10,1,56.34
+FedAvg,15,1,61.45
+FedAvg,20,1,64.14
+FedAvg,25,1,75.18
+FedAvg,30,1,72.85
+FedAvg,35,1,72.79
+FedAvg,40,1,75.66
+FedAvg,45,1,76.69
+FedAvg,50,1,78.15
+FedAvg,55,1,67.56
+FedAvg,60,1,75.55
+FedAvg,65,1,85.63
+FedAvg,70,1,82.51
+FedAvg,75,1,80.94
+FedAvg,80,1,78.87
+FedAvg,85,1,80.37
+FedAvg,90,1,87.95
+FedAvg,95,1,82.2
+FedAvg,100,1,81.14
+FedAvg,0,2,36.15
+FedAvg,5,2,48.51
+FedAvg,10,2,57.44
+FedAvg,15,2,54.04
+FedAvg,20,2,68.17
+FedAvg,25,2,65.49
+FedAvg,30,2,73.67
+FedAvg,35,2,70.45
+FedAvg,40,2,76.35
+FedAvg,45,2,80.24
+FedAvg,50,2,77.93
+FedAvg,55,2,74.86
+FedAvg,60,2,78.76
+FedAvg,65,2,83.47
+FedAvg,70,2,85.21
+FedAvg,75,2,84.94
+FedAvg,80,2,79.11
+FedAvg,85,2,77.5
+FedAvg,90,2,91.08
+FedAvg,95,2,83.58
+FedAvg,100,2,84.31
