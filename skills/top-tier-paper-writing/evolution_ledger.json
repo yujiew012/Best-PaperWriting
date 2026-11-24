@@ -23,6 +23,13 @@
           "score": 4.125,
           "valid": true,
           "role": "train"
+        },
+        {
+          "run": "20261124-015551",
+          "iter": 2,
+          "score": 4.0,
+          "valid": true,
+          "role": "train"
         }
       ]
     }
@@ -242,6 +249,122 @@
           "status": "candidate",
           "run": "20261124-015551",
           "iter": 1
+        }
+      ]
+    },
+    {
+      "id": "R-0008",
+      "scope": "universal",
+      "text": "Size the abstract to the target venue's norm rather than the skill's upper bound, compress the challenges into one clause, name a category instead of listing its members, and never claim that no prior work has asked the question.",
+      "files": [
+        "references/writing/abstract_and_introduction.md"
+      ],
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-015551",
+          "iter": 2,
+          "gap": "G2"
+        }
+      ],
+      "counter": [],
+      "status": "candidate",
+      "root_cause": "vague_rule",
+      "skill_location": "references/writing/abstract_and_introduction.md#2.0 Title & Abstract",
+      "history": [
+        {
+          "t": "2026-11-24 02:46:17",
+          "event": "created",
+          "status": "candidate",
+          "run": "20261124-015551",
+          "iter": 2
+        }
+      ]
+    },
+    {
+      "id": "R-0009",
+      "scope": "universal",
+      "text": "Number the introduction's challenges in the order in which the approach paragraph and the paper's sections answer them, so that the tags appear in ascending order.",
+      "files": [
+        "references/writing/abstract_and_introduction.md"
+      ],
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-015551",
+          "iter": 2,
+          "gap": "G3"
+        }
+      ],
+      "counter": [],
+      "status": "candidate",
+      "root_cause": "missing_rule",
+      "skill_location": "references/writing/abstract_and_introduction.md#2.1 Introduction (paragraphs 3 and 5)",
+      "history": [
+        {
+          "t": "2026-11-24 02:46:17",
+          "event": "created",
+          "status": "candidate",
+          "run": "20261124-015551",
+          "iter": 2
+        }
+      ]
+    },
+    {
+      "id": "R-0010",
+      "scope": "universal",
+      "text": "When a paper has both a Background and a Related Work section, give each cited idea one home: Background states only premises the method relies on, Related Work contrasts approaches, and the positioning sentence appears once.",
+      "files": [
+        "references/writing/related_work_and_preliminaries.md"
+      ],
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-015551",
+          "iter": 2,
+          "gap": "G4"
+        }
+      ],
+      "counter": [],
+      "status": "candidate",
+      "root_cause": "missing_rule",
+      "skill_location": "references/writing/related_work_and_preliminaries.md#2.3",
+      "history": [
+        {
+          "t": "2026-11-24 02:46:17",
+          "event": "created",
+          "status": "candidate",
+          "run": "20261124-015551",
+          "iter": 2
+        }
+      ]
+    },
+    {
+      "id": "R-0011",
+      "scope": "universal",
+      "text": "Before finalizing the Discussion, check every forward-looking sentence and rephrase any untested generalization as a hypothesis or future work, unless an experiment in the paper supports it.",
+      "files": [
+        "references/writing/discussion_conclusion_ethics.md"
+      ],
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-015551",
+          "iter": 2,
+          "gap": "G7"
+        }
+      ],
+      "counter": [],
+      "status": "candidate",
+      "root_cause": "rule_not_followed",
+      "skill_location": "references/case_lessons_ieee_sp.md#一、总体原则 (4: honesty over polish)",
+      "history": [
+        {
+          "t": "2026-11-24 02:46:17",
+          "event": "created",
+          "status": "candidate",
+          "run": "20261124-015551",
+          "iter": 2
         }
       ]
     }
