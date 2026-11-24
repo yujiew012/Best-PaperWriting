@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "policy": {
+    "domain_rule_promotion_papers": 2,
+    "universal_rule_min_papers": 2,
+    "universal_rule_min_domains": 2,
+    "max_added_lines_per_iteration": 40,
+    "max_provisional_rules_per_paper": 8,
+    "verbatim_ngram": 8,
+    "revert_tolerance": 0.25
+  },
+  "papers": {},
+  "rules": [],
+  "runs": []
+}

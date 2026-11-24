@@ -148,6 +148,7 @@ def create_domain_profile(input_text: str, output_path: str = None, domain: str 
         "target_venues": info["venues"],
         "retrieved_exemplars": exemplars,
         "retrieval_note": err or f"arXiv relevance ranking, last {years} years (no citation data)",
+        "domain_template": info.get("template"),
         "tailored_guidelines": {
             "mandatory_sections": info["structural_requirements"]["mandatory_sections"],
             "core_metrics": info["structural_requirements"]["eval_metrics"],
@@ -167,6 +168,8 @@ def create_domain_profile(input_text: str, output_path: str = None, domain: str 
         print("[!] Low confidence: consider passing --domain explicitly.", file=sys.stderr)
     if err:
         print(f"[*] Exemplars: {err}", file=sys.stderr)
+    if info.get("template"):
+        print(f"[*] Read the domain template: {info['template']} (relative to the skill folder)", file=sys.stderr)
     if output_path:
         print(f"[*] Profile saved to: {output_path}", file=sys.stderr)
     return profile

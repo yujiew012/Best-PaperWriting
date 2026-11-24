@@ -26,3 +26,6 @@ Thumbs.db
 # Runtime profile caches
 session_domain_profile.json
 /tmp/
+
+# Self-evolution run data (papers, materials, drafts) -- never commit
+.evolution/

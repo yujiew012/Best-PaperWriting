@@ -69,6 +69,7 @@ Run order: **H → A/B → C/D → F → E → G**. Branch I runs only on reques
   | Evaluation | Branch B |
   | Discussion, conclusion, ethics; where a detail belongs | `references/writing/discussion_conclusion_ethics.md` |
 
+- **Domain:** also read the template for the paper's domain, `references/domains/<domain_id>.md` (run Branch H if the domain is unknown). Its §2 paper skeleton and §3 mandatory elements override generic defaults. Rules in its §8 *Provisional rules* are suggestions backed by one exemplar paper.
 - **Do**
   1. List the facts the section needs (challenges, components, numbers) and where each comes from. Ask for anything missing.
   2. Follow the file's paragraph skeleton (for example the 7-paragraph introduction or the 5-sentence abstract).
@@ -158,9 +159,10 @@ Run order: **H → A/B → C/D → F → E → G**. Branch I runs only on reques
   uv run <skill_dir>/scripts/domain_adapter.py --file idea.md --output session_domain_profile.json
   ```
   Add `--offline` without network access.
-- **Verify:** `selection.confidence` is `high` or `medium`; otherwise ask the user and rerun with `--domain`. Report any `mandatory_sections` missing from the paper.
+- **Verify:** `selection.confidence` is `high` or `medium`; otherwise ask the user and rerun with `--domain`. Then read the `domain_template` named in the output (one of `references/domains/`) and report any mandatory element (§3) or skeleton section (§2) missing from the paper.
 
 ### I. Sentence bank (on request only)
+To evolve the whole skill from exemplar papers (Extractor → Writer → Reviewer loop), use the separate `evolve-paper-skill` skill instead. Its evidence is recorded in `evolution_ledger.json`. Never edit that ledger by hand.
 - **Read** `references/domain_and_sentence_mining.md` §2.
 - **Do:** run `self_evolve.py --file <paper.md>` (preview), show the candidates, and wait for an explicit yes before adding `--apply`.
 - **Verify:** the new entries appear in `references/mechanism_sentence_bank.md` and `EVOLUTION_LOG.md`.
@@ -233,4 +235,5 @@ Before you report completion, run the checks that apply and include their result
 | `scripts/domain_adapter.py`, `scripts/self_evolve.py` | Domain profile; sentence mining |
 | `scripts/validate_skill.py` | Maintainers: validate this skill's packaging |
 | `references/lint_rules.md` | Every checker code, with its fix |
+| `references/domains/` | Standardized per-domain templates (skeleton, mandatory elements, evaluation protocol, rejection risks, provisional rules) |
 | `references/case_lessons_ieee_sp.md`, `references/case_lessons_ieee_tcc.md` | Worked lessons from two real submissions |
