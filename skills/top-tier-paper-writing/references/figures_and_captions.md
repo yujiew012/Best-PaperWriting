@@ -26,6 +26,9 @@
 | 自底向上的层级 | **Layered**（从下到上） | 数据层 → 协议层 → 计算层 → 应用层 |
 | 中心协调 + 分布式节点 | **Hub-and-Spoke** | 联邦学习服务端与客户端、分布式系统 |
 | 与传统方案对比 | **Dual-Path**（上：传统失败路径，下：本文增强路径） | 防御 vs. 无防御 |
+| 攻击者、受害系统与防御的交互 | **Threat Model**（信任边界框住受害系统；攻击者在边界外；有防御时用 Dual-Path 对照有/无防御两条路径） | 越狱攻击与防御、提示注入 |
+
+风格档案中 `layout` 的取值 `pipeline`、`layered`、`hub_and_spoke`、`dual_path`、`threat_model` 分别对应上表五行。
 
 ### 2.2 现代简约风格（Modern Minimal）
 

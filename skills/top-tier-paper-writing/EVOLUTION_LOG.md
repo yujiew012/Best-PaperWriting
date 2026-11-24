@@ -32,3 +32,11 @@
 - Rules touched: R-0001 (provisional), R-0002 (provisional), R-0003 (candidate), R-0004 (candidate), R-0005 (candidate), R-0006 (candidate), R-0007 (candidate), R-0008 (candidate), R-0009 (candidate), R-0010 (candidate), R-0011 (candidate)
 
 ---
+
+### [Evolution run 20261124-082831 (figure mode) — 2026-11-24 08:53:11]
+- Paper `d1fb80825a` (llm_agent_security): figure score 3.17 -> 3.58 over 2 iteration(s)
+- Style changes: S-0001 max_label_words=6 (provisional)
+- Feature requests: F-0001, F-0002, F-0003, F-0004
+- Rules touched: R-0012 (provisional), R-0013 (candidate), R-0014 (candidate)
+
+---

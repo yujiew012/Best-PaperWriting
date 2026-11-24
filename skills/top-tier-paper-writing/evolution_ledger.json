@@ -40,12 +40,19 @@
         }
       ],
       "figure_domain": "llm_agent_security",
-      "figure_best_score": 3.167,
+      "figure_best_score": 3.583,
       "figure_history": [
         {
           "run": "20261124-082831",
           "iter": 1,
           "score": 3.167,
+          "valid": true,
+          "role": "train"
+        },
+        {
+          "run": "20261124-082831",
+          "iter": 2,
+          "score": 3.583,
           "valid": true,
           "role": "train"
         }
@@ -523,6 +530,13 @@
     {
       "run": "20261124-015551",
       "finished": "2026-11-24 06:11:49",
+      "papers": [
+        "d1fb80825a"
+      ]
+    },
+    {
+      "run": "20261124-082831",
+      "finished": "2026-11-24 08:53:11",
       "papers": [
         "d1fb80825a"
       ]
