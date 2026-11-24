@@ -39,5 +39,10 @@
     },
     "max_label_words": 4
   },
-  "provisional": {}
+  "provisional": {
+    "max_label_words": {
+      "value": 6,
+      "rule": "S-0001"
+    }
+  }
 }
