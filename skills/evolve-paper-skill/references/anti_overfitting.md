@@ -61,7 +61,7 @@ A figure is judged on what it communicates, not on whether it looks like the ori
 3. **Three kinds of change, three paths:**
    - *Figure rules* (what to show, numbering, labelling, conventions of a research area) follow the same ladder as writing rules: §8 of the domain template first, `figures_and_captions.md` only with papers from ≥ 2 domains.
    - *Style values* (fonts, strokes, fills, role colours, default topology) change only through `propose-style`. Values are confined to `references/figure_styles/_bounds.json`, start as provisional overrides of one domain's profile, and move into its base when a second paper agrees. `default.json` needs agreement from 2 domains.
-   - *Generator capabilities* (icons, curved or bundled edges, panels, nested groups) are **never** changed by the loop. `request-feature` logs them with their support count for a human.
+   - *Generator capabilities* (icons, curved or bundled edges, panels, nested groups) are **never** changed by the loop. `request-feature` logs them with their support count for a human, who closes them with `resolve-feature` after changing the generator (or declining).
 4. **Budgets.** ≤ 3 style changes per iteration and ≤ 6 per paper. A value reverted in a run cannot be proposed again in that run.
 5. **Deterministic floor.** A figure that renders with more layout issues or lower brief coverage than the best earlier iteration is reverted, whatever the Critic's score.
 

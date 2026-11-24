@@ -49,12 +49,25 @@ uv run <skill_dir>/scripts/gen_architecture_diagram.py --spec fig_arch.json \
 
 `role` 取值：`core`（本文模块）、`support`（服务端/辅助）、`adverse`（攻击/约束）、`neutral`（数据/通用组件），颜色取自风格档案的 `roles`。边的 `step` 字段生成编号徽章。档案的 `layout` 值是该领域的默认拓扑（§2.1），内容需要时可以换。`--validate-style <domain_id>` 只检查档案是否在 `_bounds.json` 范围内。
 
+方框之外的元素（字段名与完整说明见脚本 docstring）：
+
+| 需要表达 | 写法 |
+| :--- | :--- |
+| 攻击者、用户、模型、防御、文档、数据库等**参与方** | 方块加 `"shape": "actor_attacker"`（另有 `actor_user`、`model`、`shield`、`document`、`database`），图形按角色着色，标签在下方，箭头连到图形 |
+| 总览图中的**关键测量曲线** | 先用 `plot_data_curves.py` 出图，再在方块中写 `"image": "curve.pdf"`（保持宽高比，标签在下方） |
+| **攻击变体示例**（干净 vs. 降质输入） | 分组加 `"images": [{"path", "label"}, ...]` 与 `"cols"`，生成等大网格；有害内容先打码 |
+| 攻击边、控制边 | 边加 `"role": "adverse"`（例如中性载荷发出的攻击边）与 `"line": "dashed"\|"dotted"` |
+
+多条箭头汇入方块同一侧时会自动沿该侧错开；需要手动控制时用 `offset` 或 `from_side`/`to_side`。
+
 ### 2.4 自检清单
 
 - [ ] 模块排列符合信息流向（左→右或下→上）；
 - [ ] 每个关键步骤都有 ①–⑥ 编号且未遮挡文字；
 - [ ] 角色边界用虚线框隔离；
 - [ ] 除强调模块外均为柔和浅底色；
+- [ ] 参与方用 `shape` 图形与数据、模块区分；需要证据的测量或示例用 `image` / `images` 放进图中，**NEVER** 用文字框代替曲线；
+- [ ] 分组要么互不相交，要么带边距完整嵌套；箭头不穿过无关方块、分组或分组标题（脚本会报告）；
 - [ ] 导出矢量 PDF，并通过 `check_figure.py`；
 - [ ] 方法章节正文与图中编号一一对应。
 

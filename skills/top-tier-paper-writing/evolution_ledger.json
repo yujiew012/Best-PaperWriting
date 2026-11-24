@@ -547,7 +547,7 @@
       "id": "F-0001",
       "text": "Add an `inset` block type to gen_architecture_diagram.py that places an external PDF/PNG (e.g. the output of plot_data_curves.py or compose_examples.py) at block coordinates, scaled to fit while keeping its aspect ratio, with an optional caption label underneath; the layout checker should treat it as an opaque block for overlap and arrow-anchoring checks.",
       "aspect": "completeness",
-      "status": "open",
+      "status": "done",
       "evidence": [
         {
           "paper": "d1fb80825a",
@@ -556,13 +556,20 @@
           "gap": "G1"
         }
       ],
-      "created": "2026-11-24 08:42:33"
+      "created": "2026-11-24 08:42:33",
+      "history": [
+        {
+          "t": "2026-11-24 09:06:44",
+          "event": "done",
+          "note": "gen_architecture_diagram.py: block 'image' inset (PNG/JPG/PDF rasterized at 300 dpi), aspect kept, label below, size checked"
+        }
+      ]
     },
     {
       "id": "F-0002",
       "text": "Support an `image_grid` group (or reuse the `inset` block) that lays out N image cells of equal size with a label under each, taking image paths from the spec, so example inputs produced by compose_examples.py can sit inside an overview panel instead of being replaced by text descriptions.",
       "aspect": "domain_conventions",
-      "status": "open",
+      "status": "done",
       "evidence": [
         {
           "paper": "d1fb80825a",
@@ -571,13 +578,20 @@
           "gap": "G2"
         }
       ],
-      "created": "2026-11-24 08:42:33"
+      "created": "2026-11-24 08:42:33",
+      "history": [
+        {
+          "t": "2026-11-24 09:06:44",
+          "event": "done",
+          "note": "gen_architecture_diagram.py: group 'images' + 'cols' lays out an image grid with labels under each cell; small cells and wide labels are flagged"
+        }
+      ]
     },
     {
       "id": "F-0003",
       "text": "Add a block `shape` attribute with a small set of built-in, style-consistent actor glyphs (e.g. `actor_attacker`, `actor_user`, `model`, `shield`) drawn as simple vector pictograms in the block's role colour, with the label underneath, so parties can be told apart from data and processes by shape rather than by label alone.",
       "aspect": "emphasis",
-      "status": "open",
+      "status": "done",
       "evidence": [
         {
           "paper": "d1fb80825a",
@@ -586,13 +600,20 @@
           "gap": "G5"
         }
       ],
-      "created": "2026-11-24 08:42:33"
+      "created": "2026-11-24 08:42:33",
+      "history": [
+        {
+          "t": "2026-11-24 09:06:44",
+          "event": "done",
+          "note": "gen_architecture_diagram.py: block 'shape' (actor_attacker, actor_user, model, shield, document, database) vector glyphs in the role colour; arrows attach to the glyph"
+        }
+      ]
     },
     {
       "id": "F-0004",
       "text": "Make the layout check flag any two group outlines that partially overlap or share an edge (a group must be either fully inside another with a margin, or fully disjoint), and warn when an edge crosses a group border that neither of its endpoints belongs to.",
       "aspect": "visual_quality",
-      "status": "open",
+      "status": "done",
       "evidence": [
         {
           "paper": "d1fb80825a",
@@ -601,7 +622,14 @@
           "gap": "G7"
         }
       ],
-      "created": "2026-11-24 08:42:33"
+      "created": "2026-11-24 08:42:33",
+      "history": [
+        {
+          "t": "2026-11-24 09:06:44",
+          "event": "done",
+          "note": "gen_architecture_diagram.py: flags groups that overlap partly or share a border, edges crossing a group neither endpoint belongs to, edges through blocks and through group titles"
+        }
+      ]
     }
   ]
 }

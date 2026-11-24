@@ -64,7 +64,8 @@ def apply_style(layout="single", height=None, venue=None):
     height = height or DEFAULT_HEIGHTS[layout]
     plt.rcParams.update({
         "font.family": "serif",
-        "font.serif": ["Times New Roman", "Times", "Nimbus Roman", "DejaVu Serif"],
+        "font.serif": ["Times New Roman", "Times", "TeX Gyre Termes", "Nimbus Roman", "Nimbus Roman No9 L",
+                       "Liberation Serif", "DejaVu Serif"],   # Times-metric fallbacks before DejaVu
         "mathtext.fontset": "stix",
         "font.size": 9,
         "axes.titlesize": 10,

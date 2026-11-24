@@ -10,6 +10,7 @@ Everything that must not depend on model judgment lives here:
   * score           validate the critic's review, re-render the spec, measure brief coverage, keep/revert
   * propose-style   script-written, bounds-checked, evidence-gated changes to figure_styles/<domain>.json
   * request-feature log generator limitations for a human (the loop never edits scripts)
+  * resolve-feature a human marks a request done or declined after changing (or not) the generator
   * check_styles    the part of check-edits that verifies style-profile diffs against the ledger
 
 evolve.py imports this module lazily and calls bind(evolve_module) first.
@@ -645,6 +646,22 @@ def cmd_request_feature(a):
     return 0
 
 
+def cmd_resolve_feature(a):
+    """A human implemented (or declined) a feature request: record it so the report stops listing it."""
+    ctx = E.Ctx(a.workdir, a.run)
+    led = ctx.ledger()
+    fr = next((f for f in led.get("feature_requests", []) if f["id"] == a.id), None)
+    if not fr:
+        E.die(f"unknown feature request {a.id}", 1)
+    if len(a.note.split()) < 3:
+        E.die("--note must say what was done (e.g. the option or check that now exists)", 2)
+    fr["status"] = "declined" if a.declined else "done"
+    fr.setdefault("history", []).append({"t": E.now(), "event": fr["status"], "note": a.note.strip()})
+    E.jsave(ctx.ledger_path, led)
+    print(f"{fr['id']}: {fr['status']} -- {a.note.strip()}")
+    return 0
+
+
 # ---------------------------------------------------------------------------
 # check-edits support
 # ---------------------------------------------------------------------------
@@ -714,4 +731,8 @@ def report_lines(ctx, rows):
     lines += ["", "## Generator feature requests (open, for a human)", ""]
     lines += [f"- **{f['id']}** ({len({e['paper'] for e in f['evidence']})} paper(s), {f['aspect']}): {f['text']}"
               for f in frs] or ["- none"]
+    closed = [f for f in led.get("feature_requests", []) if f["status"] != "open"]
+    if closed:
+        lines += ["", "Closed by a human: " + ", ".join(
+            f"{f['id']} ({f['status']})" for f in closed)]
     return lines

@@ -27,6 +27,7 @@ the per-domain figure style profiles and a feature-request log for the generator
   check-brief      validate the figure brief (no layout/colour words), crop the gold figure
   propose-style    bounds-checked, evidence-gated change to references/figure_styles/<domain>.json
   request-feature  record a generator limitation for a human (scripts are never edited by the loop)
+  resolve-feature  (human) mark a feature request done or declined once the generator was changed
 
 Typical loop (see SKILL.md): init -> task extractor -> check-materials ->
 [task writer -> task reviewer -> score -> propose* -> edit -> check-edits] x N -> finalize.
@@ -1156,6 +1157,10 @@ def main(argv=None):
     s.add_argument("--iter", type=int, required=True)
     s.add_argument("--gap", required=True, help="figure-review gap with root_cause generator_limitation")
     s.add_argument("--text", help="override the gap's feature_request text")
+    s = sub.add_parser("resolve-feature", help="human: mark a feature request done/declined")
+    s.add_argument("--id", required=True, help="F-xxxx")
+    s.add_argument("--note", required=True, help="what was implemented (or why it was declined)")
+    s.add_argument("--declined", action="store_true")
     s = sub.add_parser("check-edits")
     s.add_argument("--paper", required=True)
     s.add_argument("--iter", type=int, required=True, help="iteration whose review the edits respond to")
@@ -1177,7 +1182,8 @@ def main(argv=None):
           "status": cmd_status, "finalize": cmd_finalize,
           "check-brief": lambda x: fig().cmd_check_brief(x),
           "propose-style": lambda x: fig().cmd_propose_style(x),
-          "request-feature": lambda x: fig().cmd_request_feature(x)}[a.cmd]
+          "request-feature": lambda x: fig().cmd_request_feature(x),
+          "resolve-feature": lambda x: fig().cmd_resolve_feature(x)}[a.cmd]
     if a.cmd in ("check-brief", "propose-style", "request-feature"):
         ctx = Ctx(a.workdir, a.run)
         if not is_figure(ctx):
