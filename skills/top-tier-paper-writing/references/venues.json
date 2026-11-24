@@ -1,0 +1,70 @@
+{
+  "$comment": "Venue profiles used by pubstyle.py, plot scripts, check_figure.py, lint_paper.py, check_env.py and layout_check.py (--venue). Widths in inches. page_limit = main-body pages for a regular submission (null when it varies by year or track: pass --page-limit). Always confirm limits and required sections against the current call for papers.",
+  "venues": {
+    "ieee": {
+      "name": "IEEE conferences and Transactions (IEEEtran)",
+      "columns": 2, "column_width_in": 3.5, "text_width_in": 7.16, "body_font": "Times 10pt",
+      "class_files": ["IEEEtran.cls"], "font_packages": ["times.sty", "newtxtext.sty"],
+      "caption_case": {"figure": "sentence", "table": "title"},
+      "required_sections": [], "page_limit": null,
+      "notes": "Page limits differ per venue (e.g. IEEE S&P counts the body separately from references and appendices). Limitations usually close the Discussion."
+    },
+    "acm": {
+      "name": "ACM conferences (acmart, sigconf)",
+      "columns": 2, "column_width_in": 3.33, "text_width_in": 7.0, "body_font": "Libertine 9pt",
+      "class_files": ["acmart.cls"], "font_packages": ["libertine.sty"],
+      "caption_case": {"figure": null, "table": null},
+      "required_sections": [], "page_limit": null,
+      "notes": "No fixed caption-case convention; keep one style throughout. Page limits are set per conference (e.g. CCS)."
+    },
+    "acl": {
+      "name": "ACL / EMNLP / NAACL (*ACL style files)",
+      "columns": 2, "column_width_in": 3.03, "text_width_in": 6.30, "body_font": "Times 11pt",
+      "class_files": ["acl.sty"], "font_packages": ["times.sty", "newtxtext.sty"],
+      "caption_case": {"figure": "sentence", "table": "sentence"},
+      "required_sections": ["Limitations"], "recommended_sections": ["Ethics Statement"],
+      "page_limit": 8,
+      "notes": "Long papers: 8 pages of content (short papers: 4); references, the Limitations section and an ethics statement do not count. Pass --page-limit 4 for short papers. The style files come from the ACL style-file repository, not TeX Live: copy them next to main.tex."
+    },
+    "neurips": {
+      "name": "NeurIPS (neurips_*.sty)",
+      "columns": 1, "column_width_in": 5.5, "text_width_in": 5.5, "body_font": "Times 10pt",
+      "class_files": [], "font_packages": ["times.sty", "newtxtext.sty"],
+      "caption_case": {"figure": "sentence", "table": "sentence"},
+      "required_sections": ["Checklist"], "page_limit": 9,
+      "notes": "9 content pages at submission; references, appendix and the paper checklist do not count. The style file name changes every year (neurips_YYYY.sty)."
+    },
+    "icml": {
+      "name": "ICML (icml*.sty)",
+      "columns": 2, "column_width_in": 3.25, "text_width_in": 6.75, "body_font": "Times 10pt",
+      "class_files": [], "font_packages": ["times.sty", "newtxtext.sty"],
+      "caption_case": {"figure": "sentence", "table": "sentence"},
+      "required_sections": ["Impact Statement"], "page_limit": 8,
+      "notes": "8 pages at submission (one extra for the camera-ready); references, appendix and the impact statement do not count. Style file name changes every year."
+    },
+    "iclr": {
+      "name": "ICLR (iclr*_conference.sty)",
+      "columns": 1, "column_width_in": 5.5, "text_width_in": 5.5, "body_font": "Times 10pt",
+      "class_files": [], "font_packages": ["times.sty", "newtxtext.sty"],
+      "caption_case": {"figure": "sentence", "table": "sentence"},
+      "required_sections": [], "page_limit": null,
+      "notes": "The main-text limit has varied between years (9 or 10 pages): pass --page-limit from the current call for papers."
+    },
+    "usenix": {
+      "name": "USENIX Security / OSDI / NSDI (usenix-2020-09.sty)",
+      "columns": 2, "column_width_in": 3.33, "text_width_in": 7.0, "body_font": "Times 10pt",
+      "class_files": ["usenix-2020-09.sty"], "font_packages": ["times.sty", "newtxtext.sty"],
+      "caption_case": {"figure": "sentence", "table": "sentence"},
+      "required_sections": [], "page_limit": null,
+      "notes": "USENIX Security bodies are typically limited to 13 pages, systems venues to 12; recent Security cycles also require ethics and open-science sections. Check the call for papers and pass --page-limit."
+    },
+    "lncs": {
+      "name": "Springer LNCS (llncs.cls)",
+      "columns": 1, "column_width_in": 4.8, "text_width_in": 4.8, "body_font": "Times 10pt",
+      "class_files": ["llncs.cls"], "font_packages": ["times.sty", "newtxtext.sty"],
+      "caption_case": {"figure": "sentence", "table": "sentence"},
+      "required_sections": [], "page_limit": null,
+      "notes": "Limits are set per conference and usually include references."
+    }
+  }
+}

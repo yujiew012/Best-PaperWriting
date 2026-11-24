@@ -91,6 +91,8 @@ def main(argv=None):
     bib.add_argument("--biber", action="store_true")
     ap.add_argument("--outdir", help="build directory (default: new temp dir)")
     ap.add_argument("--max-runs", type=int, default=4)
+    ap.add_argument("--venue", help="venue profile (references/venues.json): page limit + class-file check")
+    ap.add_argument("--page-limit", type=float, help="main-body page limit (overrides the venue's)")
     ap.add_argument("--save-baseline", metavar="JSON", help="save this report for a later --compare")
     ap.add_argument("--compare", metavar="JSON", help="compare with a saved baseline report")
     ap.add_argument("--verify-identical", action="store_true",
@@ -109,6 +111,28 @@ def main(argv=None):
         print(f"[warn] no {stem0}.bbl next to the paper and no --bibtex/--biber: the reference list "
               "will be empty, which changes page breaks", file=sys.stderr)
 
+    limit, note = args.page_limit, None
+    if args.venue:
+        import json
+        with open(os.path.join(HERE, "..", "references", "venues.json"), encoding="utf-8") as f:
+            venues = json.load(f)["venues"]
+        if args.venue not in venues:
+            print(f"[error] unknown venue '{args.venue}'; choose from: {', '.join(venues)}", file=sys.stderr)
+            return 2
+        v = venues[args.venue]
+        limit = limit or v.get("page_limit")
+        tex_dir = os.path.dirname(tex)
+        for cls in v.get("class_files", []):
+            local = os.path.exists(os.path.join(tex_dir, cls))
+            found = local or (shutil.which("kpsewhich") and subprocess.run(
+                ["kpsewhich", cls], capture_output=True, text=True).stdout.strip())
+            if not found:
+                print(f"[warn] {cls} (venue {args.venue}) is not installed and not next to main.tex: a build "
+                      f"with a stand-in class only ESTIMATES pages and float positions. Copy the official "
+                      f"style files next to main.tex.", file=sys.stderr)
+        if args.venue == "acl":
+            note = ("ACL: the measured body includes Limitations/Ethics if they precede the references; "
+                    "they do not count toward the limit, so the real body is shorter.")
     outdir = os.path.abspath(args.outdir) if args.outdir else tempfile.mkdtemp(prefix="floatcheck-")
     os.makedirs(outdir, exist_ok=True)
     stem, log = build(args, tex, True, outdir)
@@ -131,6 +155,10 @@ def main(argv=None):
               f"{'identical' if p1 == p0 else 'DIFFERENT (report this; results may not reflect the real layout)'}")
 
     cl_args = [aux, "--log", os.path.join(outdir, stem + ".log")]
+    if limit:
+        cl_args += ["--page-limit", str(limit)]
+    if note:
+        cl_args += ["--budget-note", note]
     if args.save_baseline:
         cl_args += ["--save-baseline", args.save_baseline]
     if args.compare:

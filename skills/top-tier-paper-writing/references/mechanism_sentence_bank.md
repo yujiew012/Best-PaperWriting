@@ -1,6 +1,8 @@
 # Mechanism Mapping Sentence Bank (顶会顶刊机制归因经典句式库)
 
-> 本句式库提炼自 CCF-A 顶会与顶级 IEEE/ACM Transactions 论文，专用于破解“实验只会报菜名堆数据”的通病，帮助作者将实证数据强行归因到自研方法的特定算法机制上。
+> 本句式库提炼自 CCF-A 顶会与顶级 IEEE/ACM Transactions 论文，专用于破解“实验只会报菜名堆数据”的通病，帮助作者将实证数据归因到自研方法的特定算法机制上。
+>
+> **使用前提**：下列句式默认已有消融或受控实验支持；只有相关证据时把 *attributed to / stems from* 换成 *is consistent with / suggests*，没有证据时写成假设（见 `writing/evaluation.md` 的归因证据阶梯）。
 
 ---
 

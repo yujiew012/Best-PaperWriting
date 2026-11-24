@@ -9,8 +9,9 @@
 | 编号 | 规则 | 检测 |
 | :--- | :--- | :--- |
 | **R1** | 浮动体与其正文首次引用**同页**，且在阅读顺序上**先于**引用（同栏在上方；引用在右栏时可在左栏；跨栏图在页顶）。 | `check_layout.py` → `FAIL`（落后一页以上）/ `WARN`（同页但在引用之后、或提前一页） |
-| **R2** | `figure*` / `table*` 最早出现在**定义处的下一页**，所以首次引用必须落在那一页或之后。 | `FAIL`，并提示把 `\begin{figure*}` 至少提前一页 |
+| **R2** | `figure*` / `table*` 最早出现在**定义处的下一页**，所以首次引用必须落在那一页或之后。推论：跨栏浮动体**永远不能出现在第 1 页**——第 1 页的预告图（teaser）必须用单栏 `figure`，或把它的首次引用放到第 2 页。 | `FAIL`，并提示把 `\begin{figure*}` 至少提前一页；首次引用在第 1 页时额外说明上述推论 |
 | **R3** | 除末页外，栏底不得出现超过 1.5 行的空白。 | 日志中的 `Underfull \vbox ... while \output is active`（启发式，需目视确认） |
+| **R4** | 正文（到参考文献或附录开始处）不超过会议页数限制。 | `layout_check.py --venue <venue>`（或 `--page-limit N`）报告 `Main body: X.XX pages` 与 `ok/FAIL page budget` |
 
 另外：表格编号与首次引用顺序一致；从未被引用的浮动体（`WARN: never referenced`）要么补引用，要么删除。
 
@@ -29,6 +30,15 @@ uv run <skill_dir>/scripts/layout_check.py paper/main.tex --compare layout_basel
 - 引擎：默认 `pdflatex`，用 `--engine xelatex|lualatex` 与论文实际编译方式保持一致（引擎不同会改变排版）。
 - 参考文献：如果论文目录中没有与 `.bib` 一致的 `main.bbl`，加 `--bibtex`（或 `--biber`），否则参考文献缺失会改变页数与浮动体位置。
 - `floatcheck.sty` 通过 `TEXINPUTS` 加载，只写入 whatsit，不改变版面；`layout_check.py` 会比较带/不带该宏包的页数，若不一致会提示。
+- 会议与页数：加 `--venue <venue>`（`references/venues.json`）。正文长度按参考文献/附录开始的位置计算到小数页；超过限制时退出码为 1，余量不足半页时提示风险。ACL 的 Limitations / Ethics 若放在参考文献之前会被一起计入，实际正文更短。
+
+### 2.1 会议模板或字体缺失时（MUST 先确认）
+
+`check_env.py --for layout --venue <venue> --paper-dir paper/` 会检查会议的类/样式文件与正文字体（包括字体文件本身，不只是宏包）。缺失时：
+
+1. 优先把官方样式文件复制到 `main.tex` 旁边（ACL 的样式文件不在 TeX Live 中），安装字体（如 `tlmgr install newtx`）。
+2. 无法获得时，用替代版式编译：版心、栏宽、字号与会议一致，正文用 Times 类字体；`layout_check.py` 会提示这只是估计。
+3. 估计值至少留 **半页** 余量，并在报告中写明“页数为替代版式下的估计”。
 
 ---
 
