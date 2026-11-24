@@ -1,0 +1,153 @@
+{
+  "$comment": "Output of the Reviewer. Scores are 1-5 per references/review_rubric.md.",
+  "type": "object",
+  "required": [
+    "paper_id",
+    "iteration",
+    "scores",
+    "gaps",
+    "summary"
+  ],
+  "properties": {
+    "paper_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "iteration": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "scores": {
+      "type": "object",
+      "required": [
+        "structure",
+        "introduction",
+        "related_work",
+        "method",
+        "evaluation",
+        "figures_tables",
+        "language",
+        "domain_conventions"
+      ],
+      "properties": {
+        "structure": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "introduction": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "related_work": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "method": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "evaluation": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "figures_tables": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "language": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "domain_conventions": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5
+        }
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "section",
+          "severity",
+          "observation",
+          "root_cause",
+          "generality",
+          "proposed_rule"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "section": {
+            "type": "string",
+            "minLength": 1
+          },
+          "severity": {
+            "enum": [
+              "major",
+              "minor"
+            ]
+          },
+          "observation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "root_cause": {
+            "enum": [
+              "missing_rule",
+              "vague_rule",
+              "wrong_rule",
+              "rule_not_followed",
+              "materials_missing",
+              "writer_error"
+            ]
+          },
+          "generality": {
+            "enum": [
+              "universal",
+              "domain",
+              "paper_specific"
+            ]
+          },
+          "domain_id": {
+            "type": "string"
+          },
+          "skill_location": {
+            "type": "string"
+          },
+          "contradicts_rule": {
+            "type": "string"
+          },
+          "proposed_rule": {
+            "type": "string"
+          },
+          "why_general": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "draft_strengths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

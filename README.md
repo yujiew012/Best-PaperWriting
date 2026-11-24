@@ -8,21 +8,21 @@
 
 它从“发表过多篇顶会/顶刊的资深博士生与审稿人”视角，覆盖计算机论文（CCF-A 会议、IEEE/ACM Transactions）的完整生命周期：
 
-1. **领域识别**：识别论文所属领域（安全、系统、机器学习、NLP/LLM），补齐该领域必备章节与图表；
+1. **领域模板**：识别论文所属领域（安全隐私、LLM/Agent 安全、联邦学习算法、系统、NLP/LLM），按该领域的标准化模板补齐章节骨架、必备要素与评测规范；
 2. **学术绘图**：现代简约架构图（带圈步骤编号 ①–⑥）与实验图（Okabe-Ito 色盲友好配色、单/双栏 3.4 / 6.9 in）；
 3. **Caption 规范**：图用 Sentence case、表用 Title Case，Caption 不下结论；
 4. **正文写作**：引言“双挑战—双案例—双直觉”，实验段落“总—分—归因”，拒绝报菜名；
 5. **双栏排版**：浮动体三大铁律，配套 `floatcheck.sty` + `check_layout.py` 自动检查；
-6. **句式库扩充**：从优秀范文中萃取因果归因句式，人工审核后写入；
+6. **自进化**：配套的 `evolve-paper-skill` 用顶会/顶刊范文驱动 Extractor → Writer → Reviewer 三个子 Agent 迭代改进 Skill，并以证据账本防止过拟合；
 7. **修订与投稿**：补实验后全文回溯、参考文献多源核验、arXiv 版本与期刊扩展投稿。
 
-完整规范见 [`skills/top-tier-paper-writing/SKILL.md`](skills/top-tier-paper-writing/SKILL.md)。
+完整规范见 [`skills/top-tier-paper-writing/SKILL.md`](skills/top-tier-paper-writing/SKILL.md)，自进化流程见 [`skills/evolve-paper-skill/SKILL.md`](skills/evolve-paper-skill/SKILL.md)。
 
 ---
 
 ## 一、安装
 
-Skill 只有一份源文件：`skills/top-tier-paper-writing/`。安装脚本把它**链接**（默认）或**复制**到各 Agent 读取 Skill 的目录：
+仓库包含两个 Skill，各自只有一份源文件：`skills/top-tier-paper-writing/`（写论文）与 `skills/evolve-paper-skill/`（用范文进化前者，维护者使用）。安装脚本把它们**链接**（默认）或**复制**到各 Agent 读取 Skill 的目录（`--skill <name>` 只装其中一个）：
 
 ```bash
 git clone https://github.com/yujiew012/Best-PaperWriting.git
@@ -79,7 +79,8 @@ Skill 按“可执行 SOP”组织，分三层加载，尽量少占 Agent 的上
 skills/top-tier-paper-writing/
 ├── SKILL.md                      # 触发描述 + 精简 SOP + 完成标准
 ├── requirements.txt              # 不使用 uv 时的依赖（matplotlib、numpy）
-├── EVOLUTION_LOG.md              # 句式库扩充记录
+├── EVOLUTION_LOG.md              # 进化记录
+├── evolution_ledger.json         # 规则证据账本（由 evolve.py 维护，勿手改）
 ├── scripts/                      # 确定性脚本（均带 PEP 723 头，可直接 `uv run`）
 │   ├── check_env.py              # 环境就绪检查（plot / layout / bib / lint / network）
 │   ├── lint_paper.py             # .tex 静态检查：label/引用、Caption 大小写与结论、\vspace、模糊措辞、堆数字、摘要/结论长度
@@ -97,6 +98,7 @@ skills/top-tier-paper-writing/
 │   └── validate_skill.py         # 维护者：校验 Skill 打包
 ├── references/
 │   ├── writing/                  # 按章节拆分：原则与句式、摘要/引言、相关工作/预备知识、方法/理论、实验、讨论/结论/伦理
+│   ├── domains/                  # 标准化领域模板（统一 8 节结构）：security_privacy、llm_agent_security、machine_learning_fl、distributed_systems、nlp_llm
 │   ├── figures_and_captions.md   # 架构图、实验图、表格、Caption 规则与正反例
 │   ├── layout_and_typesetting.md # 浮动体三条铁律、测量流程、修复阶梯
 │   ├── bibliography.md           # 参考文献多源核验
@@ -108,9 +110,54 @@ skills/top-tier-paper-writing/
 └── assets/
     ├── prompt_templates.md       # “实验表格 → 分析正文”“架构图设计”提示词
     └── curves_example.csv, ablation_example.csv, architecture_example.json  # 输入格式示例（不可用于论文）
+skills/evolve-paper-skill/          # 维护者使用：用范文进化上面的 Skill
+├── SKILL.md                      # 主 Agent（编排者）的 SOP：迭代循环、子 Agent 调用、人工确认、完成标准
+├── scripts/evolve.py             # 确定性编排：工作区隔离、校验、泄漏检测、打分、保留/回滚、证据账本、防过拟合检查
+├── assets/agents/                # 三个角色的任务模板：extractor.md、writer.md、reviewer.md
+├── assets/schemas/               # materials.json 与 review.json 的格式契约
+└── references/                   # anti_overfitting.md（规则准入阶梯）、review_rubric.md（8 维评分锚点）
 ```
 
-## 四、脚本速查
+## 四、自进化：用顶会范文持续改进 Skill
+
+把一篇（或多篇）已发表的顶会/顶刊论文交给主 Agent，它按 `evolve-paper-skill` 的 SOP 调度三个子 Agent，迭代次数由你指定：
+
+```
+            范文 PDF / Markdown
+                   │
+        ┌──────────▼──────────┐   只输出结构化事实（想法、方法、实验数据、论文专有名词），
+        │ ① Extractor 子 Agent │   不得复制原文句子（自动检测，超过 16 词即拒收）
+        └──────────┬──────────┘
+          materials.json（去掉标题/作者/会议）
+        ┌──────────▼──────────┐   看不到原文：工作区里只有材料和当前版本的 Skill，
+        │ ②  Writer 子 Agent   │   严格按 Skill 从零写出整篇论文 + “Skill 摩擦报告”
+        └──────────┬──────────┘
+             draft/main.tex
+        ┌──────────▼──────────┐   以原文为金标准：8 维评分 + 差距清单，
+        │ ③ Reviewer 子 Agent  │   每条差距标注根因（缺规则/规则含糊/规则错误/没遵守…）与适用范围
+        └──────────┬──────────┘
+              review.json
+        ┌──────────▼──────────┐   泛化 → evolve.py propose（防过拟合检查）→ 编辑 Skill
+        │   主 Agent（编排）   │   → evolve.py check-edits → 下一轮；分数下降自动回滚
+        └─────────────────────┘
+```
+
+**防过拟合是核心设计**——Skill 只积累可迁移的规范，不记住任何一篇论文：
+
+| 机制 | 做法 |
+| :--- | :--- |
+| 领域模板 | 知识沉淀到 `references/domains/<领域>.md` 的统一 8 节结构中（骨架、必备要素、评测规范、图表、叙事模式、常见拒稿原因、暂定规则） |
+| 证据阶梯 | 单篇论文只能在其领域模板的 §8 加“暂定规则”；同领域第 2 篇论文支持后才转为正式规则；通用规则（SKILL.md、writing/）须有**来自 ≥ 2 个领域的 ≥ 2 篇论文**支持 |
+| 证据账本 | `evolution_ledger.json` 记录每条规则的范围、支持与反驳证据；被后续论文反驳得更多的规则自动退役 |
+| 确定性拦截 | 新增内容中出现范文的方法/模块名、实验数值或 ≥ 8 词的原文片段即拒绝；每次迭代最多新增 40 行，每篇论文最多贡献 8 条暂定规则；每行新增规则必须带账本编号 |
+| 信息隔离 | Writer 看不到原文；草稿与原文的逐字重合过高则该轮作废 |
+| 保留最优 | 每轮快照 Skill；新草稿得分低于此前最好成绩（容差 0.25）即回滚并拒绝相应规则 |
+| 留出检验 | 用以前的范文（缓存的材料）检验本轮改动没有让旧论文变差 |
+| 人工确认 | 开始前确认范文与迭代次数；结束后由你审阅 `report.md` 与 `git diff` 决定保留或 `revert --to-base` |
+
+使用方式：在 Agent 中说“用这几篇论文进化论文写作 Skill，迭代 3 轮”，Agent 会加载 `evolve-paper-skill` 并按流程执行。论文原文、材料与草稿只保存在 `.evolution/`（已加入 `.gitignore`），不会进入仓库。
+
+## 五、脚本速查
 
 脚本既可以由 Agent 按 SOP 调用，也可以手动运行。推荐 `uv run`（按脚本头部声明自动准备隔离环境）；没有 uv 时用 `python3`，并先 `pip install -r requirements.txt`。
 
@@ -134,7 +181,7 @@ uv run $S/check_bib.py paper/refs.bib --tex paper/main.tex
 
 ---
 
-## 五、维护约定
+## 六、维护约定
 
 - 只修改 `skills/top-tier-paper-writing/` 这一份源文件；符号链接安装时，各 Agent 读取的就是它。
 - 修改后运行 `python3 skills/top-tier-paper-writing/scripts/validate_skill.py`：检查 frontmatter（`name` 与目录一致、`description` 单行且不超过 1024 字符）、`SKILL.md` 提到的路径都存在、每个脚本都有 PEP 723 头并能编译、`references/` 与 `assets/` 中没有 SKILL.md 无法到达的文件。
@@ -143,7 +190,7 @@ uv run $S/check_bib.py paper/refs.bib --tex paper/main.tex
 
 ---
 
-## 六、投喂流浪猫 🐱
+## 七、投喂流浪猫 🐱
 
 如果这个 Skill 帮你少熬了几个改稿的夜，欢迎扫码请流浪猫吃顿饭。**所有赞助都将用于为流浪猫购买猫粮。**
 

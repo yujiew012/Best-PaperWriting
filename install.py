@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Install the top-tier-paper-writing skill for one or more coding agents.
+"""Install the skills in skills/ (top-tier-paper-writing, evolve-paper-skill) for coding agents.
 
-The skill lives in one place (skills/top-tier-paper-writing/) and follows the
+Each skill lives in one place (skills/<name>/) and follows the
 Agent Skills format (a folder with SKILL.md + scripts/ + references/), which
 Claude Code, OpenAI Codex and Google Antigravity all read. This script links
-(default) or copies that folder into each agent's skills directory.
+(default) or copies each skill folder into every agent's skills directory.
 
     python3 install.py                          # all agents, user level (symlink)
     python3 install.py --agent claude codex     # only some agents
+    python3 install.py --skill top-tier-paper-writing   # only one skill
     python3 install.py --project ~/my-paper     # project level, inside a repo
     python3 install.py --copy                   # copy instead of symlink
     python3 install.py --dest ~/somewhere/skills  # any other skills directory
@@ -24,8 +25,9 @@ import shutil
 import sys
 from pathlib import Path
 
-SKILL_NAME = "top-tier-paper-writing"
-SOURCE = Path(__file__).resolve().parent / "skills" / SKILL_NAME
+SKILLS_DIR = Path(__file__).resolve().parent / "skills"
+# skill name -> source folder (every folder under skills/ with a SKILL.md)
+SKILLS = {d.name: d for d in sorted(SKILLS_DIR.iterdir()) if (d / "SKILL.md").is_file()} if SKILLS_DIR.is_dir() else {}
 
 # User-level skills directories.
 USER_DIRS = {
@@ -64,15 +66,15 @@ def skill_name_of(path: Path):
     return None
 
 
-def state(target: Path) -> str:
+def state(target: Path, name: str, source: Path) -> str:
     if target.is_symlink():
         try:
-            same = target.resolve() == SOURCE
+            same = target.resolve() == source
         except OSError:
             same = False
         return "linked" if same else "foreign-link"
     if target.is_dir():
-        return "copied" if skill_name_of(target) == SKILL_NAME else "foreign-dir"
+        return "copied" if skill_name_of(target) == name else "foreign-dir"
     if target.exists():
         return "foreign-file"
     return "absent"
@@ -85,8 +87,8 @@ def remove(target: Path):
         shutil.rmtree(target)
 
 
-def install_one(target: Path, copy: bool, force: bool, dry: bool) -> str:
-    st = state(target)
+def install_one(target: Path, name: str, source: Path, copy: bool, force: bool, dry: bool) -> str:
+    st = state(target, name, source)
     if st == "linked" and not copy:
         return "already linked"
     if st.startswith("foreign") and not force:
@@ -98,16 +100,16 @@ def install_one(target: Path, copy: bool, force: bool, dry: bool) -> str:
         remove(target)
     if not copy:
         try:
-            target.symlink_to(SOURCE, target_is_directory=True)
+            target.symlink_to(source, target_is_directory=True)
             return "linked"
         except (OSError, NotImplementedError) as e:
             print(f"  [note] symlink failed ({e}); copying instead")
-    shutil.copytree(SOURCE, target, ignore=IGNORE)
+    shutil.copytree(source, target, ignore=IGNORE)
     return "copied"
 
 
-def uninstall_one(target: Path, force: bool, dry: bool) -> str:
-    st = state(target)
+def uninstall_one(target: Path, name: str, source: Path, force: bool, dry: bool) -> str:
+    st = state(target, name, source)
     if st == "absent":
         return "not installed"
     if st.startswith("foreign") and not force:
@@ -126,6 +128,8 @@ def main(argv=None):
     where.add_argument("--project", metavar="DIR", help="install into a project instead of the user profile")
     where.add_argument("--dest", metavar="DIR", action="append",
                        help="install into this skills directory (repeatable; overrides --agent)")
+    ap.add_argument("--skill", nargs="+", metavar="NAME",
+                    help=f"which skills to install (default: all under skills/: {', '.join(SKILLS)})")
     ap.add_argument("--copy", action="store_true", help="copy files instead of creating a symlink")
     ap.add_argument("--force", action="store_true", help="replace/remove an unrelated existing entry")
     ap.add_argument("--uninstall", action="store_true", help="remove the skill from the selected locations")
@@ -133,35 +137,46 @@ def main(argv=None):
     ap.add_argument("--dry-run", action="store_true", help="show what would happen")
     args = ap.parse_args(argv)
 
-    if skill_name_of(SOURCE) != SKILL_NAME:
-        print(f"[error] skill source not found or invalid: {SOURCE}", file=sys.stderr)
+    names = args.skill or list(SKILLS)
+    unknown = [n for n in names if n not in SKILLS]
+    if unknown or not names:
+        print(f"[error] unknown skill(s) {unknown}; available: {list(SKILLS)}", file=sys.stderr)
         return 2
+    for n in names:
+        if skill_name_of(SKILLS[n]) != n:
+            print(f"[error] {SKILLS[n]}/SKILL.md: name must equal the folder name '{n}'", file=sys.stderr)
+            return 2
 
     if args.dest:
-        targets = {Path(d).expanduser() / SKILL_NAME: ["custom"] for d in args.dest}
+        bases = {Path(d).expanduser(): ["custom"] for d in args.dest}
     else:
         agents = sorted(USER_DIRS) if "all" in args.agent else args.agent
-        targets = {}
+        bases = {}
         for a in agents:
             base = (Path(args.project).expanduser() / PROJECT_DIRS[a]) if args.project else Path(USER_DIRS[a]).expanduser()
-            targets.setdefault(base / SKILL_NAME, []).append(a)
+            bases.setdefault(base, []).append(a)
 
-    print(f"source: {SOURCE}")
     failed = False
-    for target, agents in targets.items():
-        label = ", ".join(agents)
-        if args.status:
-            msg = state(target)
-        elif args.uninstall:
-            msg = uninstall_one(target, args.force, args.dry_run)
-        else:
-            msg = install_one(target, args.copy, args.force, args.dry_run)
-        failed |= msg.startswith("SKIPPED")
-        print(f"  [{label}] {target}: {msg}")
+    for name in names:
+        source = SKILLS[name]
+        print(f"skill: {name}  (source: {source})")
+        for base, agents in bases.items():
+            target = base / name
+            label = ", ".join(agents)
+            if args.status:
+                msg = state(target, name, source)
+            elif args.uninstall:
+                msg = uninstall_one(target, name, source, args.force, args.dry_run)
+            else:
+                msg = install_one(target, name, source, args.copy, args.force, args.dry_run)
+            failed |= msg.startswith("SKIPPED")
+            print(f"  [{label}] {target}: {msg}")
 
     if not (args.status or args.uninstall or args.dry_run):
-        print("\nNext: install the script dependencies once, then restart the agent so it rescans skills:")
-        print(f"  python3 -m pip install -r {SOURCE / 'requirements.txt'}")
+        req = SKILLS_DIR / "top-tier-paper-writing" / "requirements.txt"
+        print("\nNext: restart the agent so it rescans skills. Scripts run with `uv run <script>` (isolated deps);")
+        if req.exists():
+            print(f"without uv: python3 -m pip install -r {req}")
     return 1 if failed else 0
 
 
