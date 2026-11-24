@@ -4,6 +4,8 @@
 [![Format: Agent Skills](https://img.shields.io/badge/Format-Agent%20Skills%20(SKILL.md)-blue.svg)](https://agentskills.io/specification)
 [![Agents: Claude Code | Codex | Antigravity](https://img.shields.io/badge/Agents-Claude%20Code%20%7C%20Codex%20%7C%20Antigravity-brightgreen.svg)]()
 
+**中文** | [English](README_EN.md)
+
 `top-tier-paper-writing` 是一个通用的 **Agent Skill**：一个包含 `SKILL.md`、脚本与参考资料的文件夹，遵循开放的 Agent Skills 格式，可直接被 **Claude Code、OpenAI Codex、Google Antigravity（App 与 CLI）** 等编码 Agent 加载。
 
 它从“发表过多篇顶会/顶刊的资深博士生与审稿人”视角，覆盖计算机论文（CCF-A 会议、IEEE/ACM Transactions）的完整生命周期：
@@ -17,6 +19,10 @@
 7. **修订与投稿**：补实验后全文回溯、参考文献多源核验、arXiv 版本与期刊扩展投稿。
 
 完整规范见 [`skills/top-tier-paper-writing/SKILL.md`](skills/top-tier-paper-writing/SKILL.md)，自进化流程见 [`skills/evolve-paper-skill/SKILL.md`](skills/evolve-paper-skill/SKILL.md)。
+
+<p align="center">
+  <img src="docs/images/workflow.png" alt="工作流程：① 写作（确定性 SOP）与 ② 自进化（Extractor → Writer → Reviewer），二者共享同一个 Skill 核心" width="100%">
+</p>
 
 ---
 
@@ -116,6 +122,9 @@ skills/evolve-paper-skill/          # 维护者使用：用范文进化上面的
 ├── assets/agents/                # 三个角色的任务模板：extractor.md、writer.md、reviewer.md
 ├── assets/schemas/               # materials.json 与 review.json 的格式契约
 └── references/                   # anti_overfitting.md（规则准入阶梯）、review_rubric.md（8 维评分锚点）
+docs/
+├── images/                       # 流程图、赞助二维码
+└── diagram/                      # 生成并检查流程图的代码
 ```
 
 ## 四、自进化：用顶会范文持续改进 Skill
@@ -187,6 +196,7 @@ uv run $S/check_bib.py paper/refs.bib --tex paper/main.tex
 - 修改后运行 `python3 skills/top-tier-paper-writing/scripts/validate_skill.py`：检查 frontmatter（`name` 与目录一致、`description` 单行且不超过 1024 字符）、`SKILL.md` 提到的路径都存在、每个脚本都有 PEP 723 头并能编译、`references/` 与 `assets/` 中没有 SKILL.md 无法到达的文件。
 - `SKILL.md` 只放流程、规则与完成标准（500 行以内）；细节写进 `references/`，并在对应分支的 **Read** 步骤中登记。
 - 新增确定性检查时，写成 `scripts/` 中的脚本（带 PEP 723 头、`--json`、统一退出码），并把它的代码加入 `references/lint_rules.md`。
+- 流程图由代码生成：修改 `docs/diagram/build_workflow.py` 后运行 `python3 docs/diagram/build_workflow.py && node docs/diagram/render.js`，后者以 3 倍分辨率导出 `docs/images/workflow.png`，并检查文字是否溢出、元素是否重叠（有问题时退出码为 1）。
 
 ---
 
@@ -194,17 +204,17 @@ uv run $S/check_bib.py paper/refs.bib --tex paper/main.tex
 
 如果这个 Skill 帮你少熬了几个改稿的夜，欢迎扫码请流浪猫吃顿饭。**所有赞助都将用于为流浪猫购买猫粮。**
 
-If this skill saved you a few late nights of revisions, you can scan either code below to buy food for stray cats. **All sponsorship goes to cat food for stray cats.**
-
+<div align="center">
 <table>
   <tr>
-    <td align="center"><img src="docs/images/sponsor_wechat_pay.jpg" alt="微信支付收款码" width="240"></td>
-    <td align="center"><img src="docs/images/sponsor_wechat_reward.jpg" alt="微信赞赏码" width="240"></td>
+    <td align="center" width="260"><img src="docs/images/sponsor_wechat_pay.png" alt="微信支付收款码" width="220" height="220"></td>
+    <td align="center" width="260"><img src="docs/images/sponsor_wechat_reward.png" alt="微信赞赏码" width="220" height="220"></td>
   </tr>
   <tr>
-    <td align="center">微信支付 WeChat Pay</td>
-    <td align="center">微信赞赏码 WeChat Reward</td>
+    <td align="center"><b>微信支付</b></td>
+    <td align="center"><b>微信赞赏码</b></td>
   </tr>
 </table>
+</div>
 
-谢谢你，也替猫咪们谢谢你！ Thank you, from us and from the cats!
+<p align="center">谢谢你，也替猫咪们谢谢你！</p>
