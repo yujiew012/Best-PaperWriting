@@ -9,7 +9,14 @@
     "verbatim_ngram": 8,
     "revert_tolerance": 0.25
   },
-  "papers": {},
+  "papers": {
+    "d1fb80825a": {
+      "title": "Hard to Read, Easy to Jailbreak: How Visual Degradation Bypasses MLLM Safety Alignment",
+      "venue": "arXiv preprint (cs.CV), ACL-style format",
+      "year": "2026",
+      "domain": "llm_agent_security"
+    }
+  },
   "rules": [],
   "runs": []
 }
