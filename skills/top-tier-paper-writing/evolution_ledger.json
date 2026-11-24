@@ -15,7 +15,7 @@
       "venue": "arXiv preprint (cs.CV), ACL-style format",
       "year": "2026",
       "domain": "llm_agent_security",
-      "best_score": 4.125,
+      "best_score": 4.312,
       "history": [
         {
           "run": "20261124-015551",
@@ -28,6 +28,13 @@
           "run": "20261124-015551",
           "iter": 2,
           "score": 4.0,
+          "valid": true,
+          "role": "train"
+        },
+        {
+          "run": "20261124-015551",
+          "iter": 3,
+          "score": 4.312,
           "valid": true,
           "role": "train"
         }
@@ -369,5 +376,13 @@
       ]
     }
   ],
-  "runs": []
+  "runs": [
+    {
+      "run": "20261124-015551",
+      "finished": "2026-11-24 06:11:49",
+      "papers": [
+        "d1fb80825a"
+      ]
+    }
+  ]
 }
