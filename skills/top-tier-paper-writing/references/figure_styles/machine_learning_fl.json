@@ -1,0 +1,43 @@
+{
+  "domain": "machine_learning_fl",
+  "notes": "FL papers draw a server hub with client spokes; the proposed modules sit inside the client or server group and carry the core colour.",
+  "base": {
+    "layout": "hub_and_spoke",
+    "font": {
+      "block_title": 8,
+      "block_sub": 6.8,
+      "group_title": 8,
+      "edge_label": 6.8,
+      "badge": 7
+    },
+    "stroke": {
+      "block": 1.1,
+      "group": 1.0,
+      "arrow": 1.1,
+      "core_emphasis": 1.0
+    },
+    "block": {
+      "corner": 0.08,
+      "fill": "light"
+    },
+    "group": {
+      "line": "dashed",
+      "fill": true
+    },
+    "badge": {
+      "color": "vermilion",
+      "size": 11
+    },
+    "roles": {
+      "core": "blue",
+      "support": "bluish_green",
+      "adverse": "vermilion",
+      "neutral": "grey"
+    },
+    "edge": {
+      "label_box": true
+    },
+    "max_label_words": 4
+  },
+  "provisional": {}
+}

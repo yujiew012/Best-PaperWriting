@@ -97,7 +97,7 @@ def main(argv=None):
             continue
         p = os.path.join(sdir, f)
         src = open(p, encoding="utf-8").read()
-        if f != "pubstyle.py" and "# /// script" not in src:
+        if f not in ("pubstyle.py", "figstyle.py") and "# /// script" not in src:   # import-only modules
             errors.append(f"S005 scripts/{f} has no PEP 723 header (needed for `uv run`)")
         try:
             compile(src, p, "exec")      # syntax check in memory, no .pyc written

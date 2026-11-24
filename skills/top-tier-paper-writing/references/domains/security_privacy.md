@@ -34,6 +34,7 @@
 - Use standard datasets and models of the sub-field, plus at least one realistic deployment setting.
 
 ## 5. Figures and tables
+- Diagram style: `references/figure_styles/security_privacy.json` (pass `--style security_privacy` to `gen_architecture_diagram.py`).
 - System and threat overview figure marking trusted and untrusted parties, attacker entry points, and numbered steps.
 - Trade-off curves: attack budget vs. ASR / accuracy; privacy budget vs. utility.
 - A table of attacks × defenses with both ASR and clean accuracy.

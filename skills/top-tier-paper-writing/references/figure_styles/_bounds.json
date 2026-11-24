@@ -1,0 +1,126 @@
+{
+  "$comment": "Allowed values for every figure-style parameter. evolve.py refuses changes outside these bounds; gen_architecture_diagram.py refuses profiles that violate them. Colors are Okabe-Ito names only.",
+  "layout": {
+    "enum": [
+      "pipeline",
+      "layered",
+      "hub_and_spoke",
+      "dual_path",
+      "threat_model"
+    ]
+  },
+  "font.block_title": {
+    "min": 6.5,
+    "max": 10
+  },
+  "font.block_sub": {
+    "min": 5.5,
+    "max": 8.5
+  },
+  "font.group_title": {
+    "min": 6.5,
+    "max": 10
+  },
+  "font.edge_label": {
+    "min": 5.5,
+    "max": 8.5
+  },
+  "font.badge": {
+    "min": 6,
+    "max": 9
+  },
+  "stroke.block": {
+    "min": 0.6,
+    "max": 2.2
+  },
+  "stroke.group": {
+    "min": 0.5,
+    "max": 2.0
+  },
+  "stroke.arrow": {
+    "min": 0.6,
+    "max": 2.2
+  },
+  "stroke.core_emphasis": {
+    "min": 1.0,
+    "max": 2.0
+  },
+  "block.corner": {
+    "min": 0.0,
+    "max": 0.2
+  },
+  "block.fill": {
+    "enum": [
+      "none",
+      "light",
+      "medium"
+    ]
+  },
+  "group.line": {
+    "enum": [
+      "dashed",
+      "dotted",
+      "solid"
+    ]
+  },
+  "group.fill": {
+    "enum": [
+      true,
+      false
+    ]
+  },
+  "badge.color": {
+    "enum": [
+      "vermilion",
+      "blue",
+      "black",
+      "bluish_green"
+    ]
+  },
+  "badge.size": {
+    "min": 8,
+    "max": 15
+  },
+  "roles.core": {
+    "enum": [
+      "blue",
+      "bluish_green",
+      "reddish_purple",
+      "sky_blue",
+      "black"
+    ]
+  },
+  "roles.support": {
+    "enum": [
+      "bluish_green",
+      "blue",
+      "sky_blue",
+      "orange",
+      "black",
+      "grey"
+    ]
+  },
+  "roles.adverse": {
+    "enum": [
+      "vermilion",
+      "reddish_purple",
+      "orange"
+    ]
+  },
+  "roles.neutral": {
+    "enum": [
+      "grey",
+      "black"
+    ]
+  },
+  "edge.label_box": {
+    "enum": [
+      true,
+      false
+    ]
+  },
+  "max_label_words": {
+    "min": 2,
+    "max": 8
+  }
+}

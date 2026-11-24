@@ -22,8 +22,17 @@ every skill edit.
   status           scores, decisions and ledger summary
   finalize         promotion pass, report.md, EVOLUTION_LOG entry
 
+Figure mode (`init --mode figure`, implemented in figure_mode.py) evolves the diagram rules,
+the per-domain figure style profiles and a feature-request log for the generator:
+  check-brief      validate the figure brief (no layout/colour words), crop the gold figure
+  propose-style    bounds-checked, evidence-gated change to references/figure_styles/<domain>.json
+  request-feature  record a generator limitation for a human (scripts are never edited by the loop)
+
 Typical loop (see SKILL.md): init -> task extractor -> check-materials ->
 [task writer -> task reviewer -> score -> propose* -> edit -> check-edits] x N -> finalize.
+Figure loop: init --mode figure -> task fig-extractor -> check-brief ->
+[task illustrator -> task critic -> score -> propose* / propose-style* / request-feature* -> check-edits] x N
+-> finalize.
 Exit codes: 0 ok, 1 check failed / action refused, 2 usage error.
 """
 import argparse
@@ -47,6 +56,7 @@ UNIVERSAL_FILES = re.compile(r"^(SKILL\.md|references/writing/[\w-]+\.md|referen
                              r"layout_and_typesetting|bibliography|revision_and_submission|"
                              r"mechanism_sentence_bank)\.md)$")
 DOMAIN_FILES = re.compile(r"^references/domains/([\w-]+)\.md$")
+STYLE_FILES = re.compile(r"^references/figure_styles/([\w-]+)\.json$")
 IGNORED = {"evolution_ledger.json", "EVOLUTION_LOG.md"}
 MARKER = re.compile(r"<!--\s*(R-\d{4})\s*-->")
 
@@ -54,6 +64,18 @@ MARKER = re.compile(r"<!--\s*(R-\d{4})\s*-->")
 # ---------------------------------------------------------------------------
 # small utilities
 # ---------------------------------------------------------------------------
+
+def fig():
+    """The figure-mode module, bound to this one (imported lazily)."""
+    sys.path.insert(0, HERE)
+    import figure_mode
+    figure_mode.bind(sys.modules[__name__])
+    return figure_mode
+
+
+def is_figure(ctx):
+    return (ctx.run or {}).get("mode") == "figure"
+
 
 def die(msg, code=2):
     print(f"[error] {msg}", file=sys.stderr)
@@ -230,6 +252,8 @@ def blocked_terms(ctx, pid):
         terms.update(x.strip() for x in t.get(key, []) if isinstance(x, str) and len(x.strip()) >= 3)
     if m.get("idea", {}).get("method_name"):
         terms.add(m["idea"]["method_name"].strip())
+    brief = jload(os.path.join(ctx.paper_cache(pid), "figure_brief.json"), default={})
+    terms.update(x.strip() for x in brief.get("terms", []) if isinstance(x, str) and len(x.strip()) >= 3)
     for c in m.get("idea", {}).get("components", []):
         if c.get("name") and len(c["name"].strip()) >= 3:
             terms.add(c["name"].strip())
@@ -344,10 +368,25 @@ def cmd_init(a):
     except (OSError, subprocess.SubprocessError):
         dirty = ""
     run = {"run_id": run_id, "created": now(), "skill_dir": skill, "iterations": a.iterations,
-           "git_base": git, "papers": papers, "events": []}
+           "mode": a.mode, "venue": a.venue, "git_base": git, "papers": papers, "events": []}
+    if a.mode == "figure":
+        for p in papers:
+            p["brief"] = bool(jload(os.path.join(ctx.paper_cache(p["paper_id"]), "figure_brief.check.json"),
+                                    default={}).get("ok"))
     ctx.run_id, ctx.run_dir, ctx.run = run_id, run_dir, run
     ctx.save_run()
-    print(f"run: {run_id}\nskill: {skill}\niterations per paper: {a.iterations}")
+    print(f"run: {run_id} ({a.mode} mode)\nskill: {skill}\niterations per paper: {a.iterations}")
+    if a.mode == "figure":
+        for p in papers:
+            print(f"paper {p['paper_id']}: {os.path.basename(p['source'])} "
+                  f"[{'cached figure brief' if p['brief'] else 'needs figure extraction'}]")
+            if not p["source"].lower().endswith(".pdf"):
+                print("  [warn] figure mode needs a PDF to crop the gold figure")
+        print(f"sub-agent runs needed: {sum((0 if p['brief'] else 1) + 2 * a.iterations for p in papers)}")
+        if dirty:
+            print("[warn] the skill has uncommitted changes; commit or stash them so the final diff is clean")
+        print(f"\nnext: evolve.py task --role fig-extractor --paper {papers[0]['paper_id']}")
+        return 0
     for p in papers:
         flags = [("text" if p["text"] else "NO TEXT (extractor must write source.txt)"),
                  ("cached materials" if p["materials"] else "needs extraction")]
@@ -363,6 +402,12 @@ def cmd_init(a):
 def cmd_task(a):
     ctx = Ctx(a.workdir, a.run)
     run = ctx.need_run()
+    figure_roles = ("fig-extractor", "illustrator", "critic")
+    if is_figure(ctx) != (a.role in figure_roles):
+        die(f"role '{a.role}' does not belong to a {run.get('mode', 'writing')}-mode run "
+            f"(writing: extractor/writer/reviewer; figure: {'/'.join(figure_roles)})")
+    if is_figure(ctx):
+        return fig().cmd_task(a)
     p = ctx.paper(a.paper)
     pid = p["paper_id"]
     cache = ctx.paper_cache(pid)
@@ -521,6 +566,8 @@ def draft_text(draft_dir):
 def cmd_score(a):
     ctx = Ctx(a.workdir, a.run)
     run = ctx.need_run()
+    if is_figure(ctx):
+        return fig().cmd_score(a)
     p = ctx.paper(a.paper)
     pid, k = p["paper_id"], a.iter
     it = ctx.iter_dir(pid, k)
@@ -633,16 +680,22 @@ def cmd_propose(a):
     if p.get("role") == "holdout":
         die("holdout papers only measure regressions; do not propose rules from them", 1)
     pol = ctx.policy()
-    review = jload(os.path.join(ctx.iter_dir(pid, a.iter), "review.json"))
+    figure = is_figure(ctx)
+    review = jload(os.path.join(ctx.iter_dir(pid, a.iter), "figure_review.json" if figure else "review.json"))
     gap = next((g for g in review["gaps"] if g["id"] == a.gap), None)
     if not gap:
         die(f"gap {a.gap} not found in iteration {a.iter} review", 1)
+    if figure and gap["root_cause"] in fig().NOT_RULES:
+        die(f"gap {a.gap} has root cause '{gap['root_cause']}': {fig().NOT_RULES[gap['root_cause']]}", 1)
+    if figure and a.scope == "universal" and a.target not in ("references/figures_and_captions.md", "SKILL.md"):
+        die("figure-mode universal rules go to references/figures_and_captions.md (or SKILL.md)", 2)
     if gap["generality"] == "paper_specific":
         die(f"gap {a.gap} is paper-specific: record it in the report, do not turn it into a rule", 1)
     if gap["root_cause"] in ("materials_missing", "writer_error"):
         die(f"gap {a.gap} has root cause '{gap['root_cause']}' (not a skill defect); no rule", 1)
     led = ctx.ledger()
-    paper_domain = led["papers"].get(pid, {}).get("domain")
+    paper_domain = led["papers"].get(pid, {}).get("figure_domain" if figure else "domain") or \
+        led["papers"].get(pid, {}).get("domain")
     if a.scope == "domain":
         dom = a.domain or gap.get("domain_id") or paper_domain
         target = f"references/domains/{dom}.md"
@@ -771,9 +824,13 @@ def cmd_check_edits(a):
         if a_txt == b_txt:
             continue
         uni, dom = UNIVERSAL_FILES.match(rel), DOMAIN_FILES.match(rel)
+        if STYLE_FILES.match(rel) and is_figure(ctx):
+            errors += fig().check_style_file(rel, old.get(rel), new.get(rel), rules, run["skill_dir"])
+            continue
         if not (uni or dom):
             errors.append(f"{rel}: evolution may only edit SKILL.md, references/writing/, the rule reference "
-                          f"files and references/domains/ (scripts, assets and taxonomies need a human)")
+                          f"files, references/domains/ and (figure mode, via propose-style) "
+                          f"references/figure_styles/<domain>.json; scripts, assets and taxonomies need a human")
             continue
         sm = difflib.SequenceMatcher(None, a_txt, b_txt, autojunk=False)
         added = [(j, b_txt[j]) for tag, _, _, j1, j2 in sm.get_opcodes() if tag in ("replace", "insert")
@@ -825,6 +882,8 @@ def cmd_check_edits(a):
     corpus = {rel: open(path, encoding="utf-8", errors="replace").read() for rel, path in new.items()
               if rel.endswith(".md")}
     for r in led["rules"]:
+        if r["scope"].startswith("style:"):
+            continue          # style values live in figure_styles/*.json and are checked above
         where = [rel for rel, txt in corpus.items() if f"<!-- {r['id']} -->" in txt]
         if r["status"] in ("retired", "rejected", "candidate") and where:
             errors.append(f"{r['id']} is {r['status']} but still appears in {where}")
@@ -917,20 +976,24 @@ def cmd_holdout(a):
         print("papers with cached materials (usable as holdout):")
         for pid, info in led.get("papers", {}).items():
             ok = os.path.exists(os.path.join(ctx.paper_cache(pid), "materials.json"))
-            print(f"  {pid}  best={info.get('best_score', '-')}  domain={info.get('domain')}  "
+            print(f"  {pid}  best={info.get('best_score', '-')}  figure={info.get('figure_best_score', '-')}  domain={info.get('domain')}  "
                   f"{info.get('title', '')[:50]}  {'' if ok else '(no cached materials)'}")
         return 0
     pid = a.paper
-    if not os.path.exists(os.path.join(ctx.paper_cache(pid), "materials.json")):
+    key = "figure_best_score" if is_figure(ctx) else "best_score"
+    if is_figure(ctx):
+        if not jload(os.path.join(ctx.paper_cache(pid), "figure_brief.check.json"), default={}).get("ok"):
+            die(f"no validated figure brief cached for {pid}", 1)
+    elif not os.path.exists(os.path.join(ctx.paper_cache(pid), "materials.json")):
         die(f"no cached materials for {pid}", 1)
     if any(p["paper_id"] == pid for p in run["papers"]):
         die(f"{pid} is already in this run", 1)
     run["papers"].append({"paper_id": pid, "source": led["papers"].get(pid, {}).get("title", pid), "text": True,
                           "materials": True, "role": "holdout", "domain": led["papers"].get(pid, {}).get("domain"),
-                          "baseline": led["papers"].get(pid, {}).get("best_score")})
+                          "baseline": led["papers"].get(pid, {}).get(key), "brief": is_figure(ctx)})
     ctx.save_run()
-    print(f"holdout {pid} added (previous best {led['papers'].get(pid, {}).get('best_score', '-')}). Run writer + "
-          f"reviewer for iteration 1 and score; a drop > {ctx.policy()['revert_tolerance']} means the run "
+    print(f"holdout {pid} added (previous best {led['papers'].get(pid, {}).get(key, '-')}). Run "
+          f"{'illustrator + critic' if is_figure(ctx) else 'writer + reviewer'} for iteration 1 and score; a drop > {ctx.policy()['revert_tolerance']} means the run "
           f"overfitted -> consider `revert --to-base`.")
     return 0
 
@@ -969,6 +1032,8 @@ def cmd_finalize(a):
     led, pol = ctx.ledger(), ctx.policy()
     changes = []
     for r in led["rules"]:
+        if r["scope"].startswith("style:"):
+            continue          # style rules are synced with their profile by propose-style
         st = rule_status(r, pol, led) if r["status"] not in ("rejected",) else "rejected"
         if st != r["status"]:
             changes.append(f"{r['id']}: {r['status']} -> {st}")
@@ -991,13 +1056,17 @@ def cmd_finalize(a):
             minus = sum(1 for l in d if l.startswith("-") and not l.startswith("---"))
             diffstat.append(f"| `{rel}` | +{plus} | -{minus} |")
     rows = collect(ctx)
-    rules_run = [r for r in led["rules"] if any(e.get("run") == run["run_id"] for e in r["evidence"] + r.get("counter", []))]
-    lines = [f"# Evolution report — run {run['run_id']}", "",
+    rules_run = [r for r in led["rules"] if any(e.get("run") == run["run_id"] for e in r["evidence"] + r.get("counter", []))
+                 and not r["scope"].startswith("style:")]
+    lines = [f"# Evolution report — run {run['run_id']}" + (" (figure mode)" if is_figure(ctx) else ""), "",
              f"- Skill: `{run['skill_dir']}`  (git base: `{run.get('git_base') or 'n/a'}`)",
-             f"- Iterations per paper: {run['iterations']}", "", "## Scores", "",
-             "| paper | role | iter | score | lint E/W | leakage span | decision |",
-             "| :--- | :--- | ---: | ---: | :--- | ---: | :--- |"]
-    for p, m in rows:
+             f"- Iterations per paper: {run['iterations']}"]
+    if is_figure(ctx):
+        lines += fig().report_lines(ctx, rows)
+    else:
+        lines += ["", "## Scores", "", "| paper | role | iter | score | lint E/W | leakage span | decision |",
+                  "| :--- | :--- | ---: | ---: | :--- | ---: | :--- |"]
+    for p, m in ([] if is_figure(ctx) else rows):
         lint = f"{m['lint']['errors']}/{m['lint']['warnings']}" if m.get("lint") else "-"
         lines.append(f"| {p['paper_id']} | {p.get('role', 'train')} | {m['iter']} | {m['score']:.2f} | {lint} | "
                      f"{m['leakage']['longest_span']} | {m['decision']}{' (reverted)' if m.get('reverted') else ''} |")
@@ -1024,10 +1093,17 @@ def cmd_finalize(a):
             if p.get("role", "train") == "train" and m["valid"] and not m.get("reverted"):
                 best.setdefault(p["paper_id"], []).append(m["score"])
         with open(log, "a", encoding="utf-8") as f:
-            f.write(f"\n### [Evolution run {run['run_id']} — {now()}]\n")
+            f.write(f"\n### [Evolution run {run['run_id']}{' (figure mode)' if is_figure(ctx) else ''} — {now()}]\n")
             for pid, sc in best.items():
-                f.write(f"- Paper `{pid}` ({led['papers'].get(pid, {}).get('domain')}): score "
+                f.write(f"- Paper `{pid}` ({led['papers'].get(pid, {}).get('domain')}): "
+                        f"{'figure ' if is_figure(ctx) else ''}score "
                         f"{sc[0]:.2f} -> {sc[-1]:.2f} over {len(sc)} iteration(s)\n")
+            if is_figure(ctx):
+                st = [r for r in led["rules"] if r["scope"].startswith("style:")
+                      and any(e.get("run") == run["run_id"] for e in r["evidence"])]
+                f.write(f"- Style changes: {', '.join(r['id'] + ' ' + r['param'] + '=' + repr(r['value']) + ' (' + r['status'] + ')' for r in st) or 'none'}\n")
+                fr = [x for x in led.get("feature_requests", []) if any(e.get("run") == run["run_id"] for e in x["evidence"])]
+                f.write(f"- Feature requests: {', '.join(x['id'] for x in fr) or 'none'}\n")
             f.write(f"- Rules touched: {', '.join(r['id'] + ' (' + r['status'] + ')' for r in rules_run) or 'none'}\n"
                     "\n---\n")
     print("\n".join(lines))
@@ -1044,11 +1120,15 @@ def main(argv=None):
     s.add_argument("--skill", required=True, help="path to the skill to evolve (e.g. skills/top-tier-paper-writing)")
     s.add_argument("--paper", action="append", required=True, help="exemplar paper (.pdf/.md/.txt/.tex); repeatable")
     s.add_argument("--iterations", type=int, default=3)
+    s.add_argument("--mode", choices=["writing", "figure"], default="writing",
+                   help="writing: evolve the writing rules; figure: evolve diagram rules and style profiles")
+    s.add_argument("--venue", help="figure mode: venue profile for the figure width (default: from the paper)")
     s = sub.add_parser("task")
-    s.add_argument("--role", choices=["extractor", "writer", "reviewer"], required=True)
+    s.add_argument("--role", choices=["extractor", "writer", "reviewer", "fig-extractor", "illustrator", "critic"],
+                   required=True)
     s.add_argument("--paper", required=True)
     s.add_argument("--iter", type=int)
-    for name in ("check-materials",):
+    for name in ("check-materials", "check-brief"):
         s = sub.add_parser(name)
         s.add_argument("--paper", required=True)
     s = sub.add_parser("score")
@@ -1063,6 +1143,19 @@ def main(argv=None):
     s.add_argument("--target", help="universal rules: file to edit (relative to the skill)")
     s.add_argument("--rule", required=True, help="generalized imperative rule text (no paper specifics)")
     s.add_argument("--contradicts", help="rule id this gap contradicts (adds counter-evidence instead)")
+    s = sub.add_parser("propose-style")
+    s.add_argument("--paper", required=True)
+    s.add_argument("--iter", type=int, required=True)
+    s.add_argument("--gap", required=True, help="figure-review gap with root_cause style_parameter")
+    s.add_argument("--param", help="override the gap's style_change.param")
+    s.add_argument("--value", help="override the gap's style_change.value")
+    s.add_argument("--reason", help="general reason recorded with the change (default: gap.why_general)")
+    s.add_argument("--default", action="store_true", help="change default.json instead of the domain profile")
+    s = sub.add_parser("request-feature")
+    s.add_argument("--paper", required=True)
+    s.add_argument("--iter", type=int, required=True)
+    s.add_argument("--gap", required=True, help="figure-review gap with root_cause generator_limitation")
+    s.add_argument("--text", help="override the gap's feature_request text")
     s = sub.add_parser("check-edits")
     s.add_argument("--paper", required=True)
     s.add_argument("--iter", type=int, required=True, help="iteration whose review the edits respond to")
@@ -1081,7 +1174,14 @@ def main(argv=None):
         die("revert --to needs --paper")
     fn = {"init": cmd_init, "task": cmd_task, "check-materials": cmd_check_materials, "score": cmd_score,
           "propose": cmd_propose, "check-edits": cmd_check_edits, "revert": cmd_revert, "holdout": cmd_holdout,
-          "status": cmd_status, "finalize": cmd_finalize}[a.cmd]
+          "status": cmd_status, "finalize": cmd_finalize,
+          "check-brief": lambda x: fig().cmd_check_brief(x),
+          "propose-style": lambda x: fig().cmd_propose_style(x),
+          "request-feature": lambda x: fig().cmd_request_feature(x)}[a.cmd]
+    if a.cmd in ("check-brief", "propose-style", "request-feature"):
+        ctx = Ctx(a.workdir, a.run)
+        if not is_figure(ctx):
+            die(f"`{a.cmd}` needs a figure-mode run (`init --mode figure`)")
     return fn(a)
 
 

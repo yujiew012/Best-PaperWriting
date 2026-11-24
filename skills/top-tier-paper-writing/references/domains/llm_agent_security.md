@@ -36,6 +36,7 @@
 - **Repetition:** sample multiple runs or seeds for stochastic decoding; report variance.
 
 ## 5. Figures and tables
+- Diagram style: `references/figure_styles/llm_agent_security.json` (pass `--style llm_agent_security` to `gen_architecture_diagram.py`).
 - Figure 1: the attack or defense flow on the running example, showing where untrusted content enters (numbered steps).
 - Main table: models × defenses, reporting both ASR and utility (never ASR alone).
 - A security-utility trade-off plot when the defense has a threshold or budget.
