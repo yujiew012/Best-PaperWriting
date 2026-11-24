@@ -8,10 +8,10 @@
 ## 1. 硬性规则
 
 1. **MUST** 使用真实实验数据作图；图中每个数字都能追溯到结果文件（在 LaTeX 源码注释中写明出处）。**NEVER** 用示例数据（`assets/*_example.*`、`--demo`）生成论文插图。
-2. **MUST** 按版式定宽：单栏 3.4 in，跨栏 6.9 in（可接受 3.3–3.5 / 6.8–7.0 in），导出矢量 PDF（字体为 TrueType/Type 42 嵌入，无 Type 3）。用 `scripts/check_figure.py` 验证。
-3. **MUST** 使用 Okabe-Ito 色盲友好调色板，并全篇固定语义：蓝 `#0072B2` = 本文方法，橙 `#E69F00` / 紫 `#CC79A7` = 基线，绿 `#009E73` = 变体/支撑组件，朱红 `#D55E00` = 攻击/退化/对抗实体。
+2. **MUST** 按目标会议的版式定宽（见 §3.3）：绘图脚本与 `check_figure.py` 都传 `--venue <venue>`；不传时按 IEEE（单栏 3.4 in、跨栏 6.9 in）。导出矢量 PDF（字体为 TrueType/Type 42 嵌入，无 Type 3）。**NEVER** 先按 IEEE 宽度出图再在 LaTeX 里缩放：字号会随之变小。
+3. **MUST** 使用 Okabe-Ito 色盲友好调色板，并全篇固定语义：蓝 `#0072B2` = 本文方法，橙 `#E69F00` / 紫 `#CC79A7` = 基线，绿 `#009E73` = 变体/支撑组件，朱红 `#D55E00` = 攻击/退化/对抗实体。朱红只通过 `--adverse` 显式指定，脚本不会按顺序把它分给普通系列；有朱红系列时其余系列自动避开橙色。
 4. **MUST** 黑白可辨：不同曲线同时使用不同标记（`o s ^ D v`）与线型（`- -- -. :`），脚本已自动分配。
-5. **MUST** 多随机种子（≥ 3 seeds）报告均值 ± 标准差；曲线用阴影带，柱状图用误差棒。少于 3 个种子时脚本会警告，必须在 Caption 中说明种子数。
+5. **MUST** 多随机种子（≥ 3 seeds）报告均值 ± 标准差；曲线用阴影带，柱状图用误差棒。误差棒/阴影只表示真实的不确定性（多次运行的差异，或对测试样本的置信区间）；只有单次运行时脚本会省略它们（**NEVER** 画零宽误差棒），此时必须在 Caption 中说明运行次数。
 6. **NEVER** 在 Caption 中下结论（见 §5）。
 
 ---
@@ -67,6 +67,9 @@ uv run <skill_dir>/scripts/gen_architecture_diagram.py --spec fig_arch.json --ou
 | 两阶段扰动测试 | 折线图 | 竖向虚线分隔 Phase I / II | `plot_data_curves.py --phase-split X` |
 | 跨骨干网方差 | 分组柱状图 / 箱线图 | 突出本文方法的小方差 | `plot_bar_ablation.py` |
 | 高维表征聚类 | t-SNE / UMAP 散点 | 簇边界 + 高对比标记 | 无现成脚本：按 §1 规则写，并调用 `pubstyle.apply_style()` |
+| 同一输入施加处理前后（如防御） | 成对柱状图 | 每组一个色相；处理前实心在前、处理后浅色斜纹在后；箭头 + 变化量 | `plot_bar_ablation.py --paired BEFORE AFTER` |
+| 多模型 × 条件扫描（如分辨率） | 小多图（small multiples） | 共享坐标轴；对数/反向 x 轴；阴影标出关键区间 | `plot_data_curves.py`（CSV 加 `panel` 列）`--logx --invert-x --band X1 X2 LABEL` |
+| 示例输入（干净 vs. 攻击/退化） | 图片网格 | 等大单元格、保持纵横比、下方标签；有害内容先打码 | `compose_examples.py` |
 
 ### 3.2 数据格式（长表 CSV）
 
@@ -78,16 +81,30 @@ uv run <skill_dir>/scripts/plot_data_curves.py --data results/curves.csv --ours 
     --xlabel "Communication rounds" --ylabel "Test accuracy (%)" --out fig_convergence.pdf
 uv run <skill_dir>/scripts/plot_bar_ablation.py --data results/ablation.csv --ours "Full model" \
     --ylabel "Accuracy (%)" --annotate-delta --out fig_ablation.pdf
-uv run <skill_dir>/scripts/check_figure.py fig_convergence.pdf fig_ablation.pdf
+uv run <skill_dir>/scripts/plot_bar_ablation.py --data results/defense.csv --paired "No defense" "With defense" \
+    --ylabel "ASR" --venue acl --out fig_defense.pdf
+uv run <skill_dir>/scripts/plot_data_curves.py --data results/sweep.csv --logx --invert-x \
+    --band 30 90 "vulnerable band" --adverse ASR --ncols 4 --venue acl --out fig_sweep.pdf
+uv run <skill_dir>/scripts/compose_examples.py --images clean.png blur.png --labels "Clean" "Blur" \
+    --venue acl --out fig_examples.pdf
+uv run <skill_dir>/scripts/check_figure.py --venue acl fig_*.pdf
 ```
 
 ### 3.3 尺寸与字号
 
-| 版式 | 宽 | 高 | 用途 |
-| :--- | :--- | :--- | :--- |
-| 单栏 | 3.4 in | 2.2–2.6 in | 单条收敛曲线、消融柱状图、敏感性分析 |
-| 跨栏 | 6.9 in | 2.5–3.5 in | 全景架构图、1×3 / 1×4 多子图 |
-| 1.5 栏 | 4.8–5.2 in | 3.0–3.4 in | 混淆矩阵、热力图、复杂聚类图 |
+宽度由 `--venue` 决定（数据在 `references/venues.json`；`--layout single` = 一栏宽，单栏会议中即正文宽；`double` = 正文宽）：
+
+| 会议 | 栏数 | 单栏宽 | 正文宽 | 图 / 表 Caption |
+| :--- | :--- | :--- | :--- | :--- |
+| `ieee` | 2 | 3.5 in | 7.16 in | sentence / Title Case |
+| `acm` | 2 | 3.33 in | 7.0 in | 全篇统一即可 |
+| `acl` | 2 | 3.03 in | 6.30 in | sentence / sentence |
+| `icml` | 2 | 3.25 in | 6.75 in | sentence / sentence |
+| `usenix` | 2 | 3.33 in | 7.0 in | sentence / sentence |
+| `neurips`, `iclr` | 1 | 5.5 in | 5.5 in | sentence / sentence |
+| `lncs` | 1 | 4.8 in | 4.8 in | sentence / sentence |
+
+高度：单栏图 2.2–2.6 in，跨栏图 2.5–3.5 in，小多图每行约 1.7 in。
 
 字号（单栏 3.4 in 下与 9–10 pt 正文协调）：子图标题 10 pt 粗体，坐标轴标签 9 pt，刻度 8 pt，图例 7.5–8 pt，图内批注 7–8 pt；数学字体用 STIX。
 
@@ -120,7 +137,7 @@ uv run <skill_dir>/scripts/check_figure.py fig_convergence.pdf fig_ablation.pdf
 
 ### 5.1 规则
 
-- 图标题 **IEEE Sentence case**（仅首词与专有名词大写）；表标题 **IEEE Title Case**（实词首字母大写）。`lint_paper.py` 会检查（W201/W202）。
+- 大小写随会议（§3.3 表格）：IEEE 图用 Sentence case、表用 Title Case；ACL/NeurIPS/ICML 等图表都用 Sentence case。`lint_paper.py --venue <venue>` 按会议检查（W201/W202）。
 - Caption 只说明：展示了什么、坐标轴与图例含义、数据集与模型（如 *"CIFAR-10 (CNN)"*）、统计口径（如 *"mean ± std over three seeds"*）、攻击注入轮次、虚实线含义。
 - **NEVER** 在 Caption 中下结论（*outperforms*, *superior*, *demonstrates*, *shows that*, *clearly*, *significantly better*）；结论留给正文。`lint_paper.py` 会检查（W203）。
 - `\label` 必须放在 `\caption` 之后，否则编号错误（E001）。

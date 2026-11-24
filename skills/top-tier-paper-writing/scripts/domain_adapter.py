@@ -59,11 +59,15 @@ def score_domains(text: str, taxonomies: dict) -> dict:
     low = text.lower()
     result = {}
     for domain_id, cfg in taxonomies.items():
-        kws = {kw: len(_term_regex(kw).findall(low)) for kw in cfg.get("keywords", [])}
+        # strong = signature terms of the area (5), keywords (2, or 3 if multi-word), weak = generic terms (1)
+        weights = {kw: (3 if " " in kw or "-" in kw else 2) for kw in cfg.get("keywords", [])}
+        weights.update({kw: 1 for kw in cfg.get("weak_keywords", [])})
+        weights.update({kw: 5 for kw in cfg.get("strong_keywords", [])})
+        kws = {kw: len(_term_regex(kw).findall(low)) for kw in weights}
         kws = {k: n for k, n in kws.items() if n}
         venues = [v for v in cfg.get("venues", []) if _term_regex(v).search(low)]
-        # Multi-word terms are more specific, so they weigh more.
-        score = sum(n * (3 if " " in k or "-" in k else 2) for k, n in kws.items()) + 5 * len(venues)
+        # each term counts at most 3 times so one repeated generic word cannot dominate
+        score = sum(min(n, 3) * weights[k] for k, n in kws.items()) + 5 * len(venues)
         result[domain_id] = {"score": score,
                              "matched_keywords": sorted(kws, key=kws.get, reverse=True),
                              "matched_venues": venues}

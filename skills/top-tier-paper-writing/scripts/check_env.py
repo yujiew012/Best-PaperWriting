@@ -7,6 +7,7 @@
 
     python3 check_env.py                 # everything
     python3 check_env.py --for plot      # plot | layout | bib | lint | network (repeatable)
+    python3 check_env.py --for layout --venue acl --paper-dir paper/   # + venue class and fonts
 
 Prints one line per requirement and the exact fix. Never installs anything.
 Exit codes: 0 all requested features ready, 1 something missing.
@@ -76,6 +77,48 @@ def latex_checks():
     return res
 
 
+def venue_checks(name, paper_dir):
+    import json
+    with open(os.path.join(SKILL_DIR, "references", "venues.json"), encoding="utf-8") as f:
+        venues = json.load(f)["venues"]
+    if name not in venues:
+        return [ok(f"venue '{name}'", False, "unknown", "choose one of: " + ", ".join(venues))]
+    v = venues[name]
+    kpse = shutil.which("kpsewhich")
+    res = []
+
+    def found(fname):
+        if paper_dir and os.path.exists(os.path.join(paper_dir, fname)):
+            return os.path.join(paper_dir, fname)
+        if not kpse:
+            return ""
+        try:
+            return subprocess.run([kpse, fname], capture_output=True, text=True, timeout=20).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            return ""
+    for cls in v.get("class_files", []):
+        where = found(cls)
+        res.append(ok(f"{name}: {cls}", bool(where), where or "missing",
+                      "copy the official style files next to main.tex (pass --paper-dir), or install them; "
+                      "without them page counts and float positions are only estimates"))
+    # a font package only helps if its font files exist too (times.sty without the URW fonts
+    # silently falls back to Computer Modern and changes every line break)
+    probes = {"times.sty": "ptmr7t.tfm", "mathptmx.sty": "ptmr7t.tfm", "newtxtext.sty": "ntx-Regular-tlf-t1.tfm",
+              "libertine.sty": "LinLibertineT-tlf-t1.tfm"}
+    fonts = [f for f in v.get("font_packages", []) if found(f) and (f not in probes or found(probes[f]))]
+    broken = [f for f in v.get("font_packages", []) if found(f) and f in probes and not found(probes[f])]
+    if v.get("font_packages"):
+        res.append(ok(f"{name}: body font ({v.get('body_font', '?')})", bool(fonts),
+                      ", ".join(fonts) or ("package present but font files missing: " + ", ".join(broken)
+                                           if broken else "none of " + ", ".join(v["font_packages"])),
+                      "install the fonts (TeX Live: tlmgr install newtx, or the texlive-fonts-recommended "
+                      "package); otherwise LaTeX falls back to another font and every line break differs"))
+    if not v.get("class_files"):
+        res.append(ok(f"{name}: style file", True, "year-specific file (e.g. " + v["name"].split("(")[-1].rstrip(")")
+                      + "): check it is next to main.tex"))
+    return res
+
+
 def network_check():
     try:
         req = urllib.request.Request("https://export.arxiv.org/api/query?search_query=all:test&max_results=1",
@@ -89,6 +132,8 @@ def network_check():
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--venue", help="also check the venue's class/style files and fonts (references/venues.json)")
+    ap.add_argument("--paper-dir", help="directory of main.tex (style files may live there)")
     ap.add_argument("--for", dest="features", action="append",
                     choices=["plot", "layout", "bib", "lint", "network"], help="feature(s) to check")
     args = ap.parse_args(argv)
@@ -101,6 +146,8 @@ def main(argv=None):
         results += [module("matplotlib"), module("numpy")]
     if "layout" in feats:
         results += latex_checks()
+    if args.venue:
+        results += venue_checks(args.venue, args.paper_dir)
     if "network" in feats:
         results += network_check()
     # lint and bib are stdlib-only: nothing beyond Python itself

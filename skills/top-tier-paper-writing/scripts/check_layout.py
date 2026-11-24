@@ -138,7 +138,24 @@ def parse_aux(aux_path: str):
     newlabels = {}
     for label, body in re.findall(r"\\newlabel\{([^}]+)\}\{\{[^}]*\}\{([^}]*)\}", content):
         newlabels[label] = body
-    return geom, floats, refs, newlabels
+    marks = {}
+    for what, page, phys, x, y in _records(content, "FCmark", 5):
+        marks.setdefault(what, Pos.parse(page, phys, x, y))     # first occurrence
+    blk = _records(content, "FCblock", 2)
+    block = (int(blk[-1][0]), int(blk[-1][1])) if blk else None
+    return geom, floats, refs, newlabels, marks, block
+
+
+def body_length(geom, marks, block):
+    """Main-body length in pages, up to the first bibliography/appendix marker (None if unknown)."""
+    ends = [p for k, p in marks.items() if k in ("bibliography", "appendix")]
+    if not ends or not block or geom is None:
+        return None, None
+    end = min(ends, key=lambda p: (p.phys, geom.column(p), -p.y))
+    top, bottom = block
+    frac_col = min(max((top - end.y) / max(top - bottom, 1), 0.0), 1.0)
+    used = (geom.column(end) + frac_col) / 2 if geom.twocolumn else frac_col
+    return round(end.phys - 1 + used, 2), end
 
 
 # ---------------------------------------------------------------------------
@@ -167,7 +184,9 @@ def check_floats(geom: Geometry, floats: Dict[str, FloatInfo], refs: Dict[str, L
                 fl.messages.append(
                     f"R2: defined on p.{fl.defpos.page}, so it cannot appear before "
                     f"p.{earliest} (physical), but is first referenced on p.{r.page}; "
-                    f"move \\begin{{{fl.ftype}*}} at least one page before the reference")
+                    f"move \\begin{{{fl.ftype}*}} at least one page before the reference"
+                    + (f"; NOTE: a full-width {fl.ftype}* can never appear on page 1 -- use a column-width "
+                       f"{fl.ftype} for a page-1 teaser, or cite it first on page 2" if r.phys == 1 else ""))
             elif f.phys > earliest and f.phys > r.phys:
                 fl.messages.append(
                     f"deferred to p.{f.page} although p.{earliest} was possible "
@@ -263,6 +282,8 @@ def main(argv=None):
     ap.add_argument("--log", help="LaTeX log file (default: next to the .aux)")
     ap.add_argument("--json", "--save-baseline", dest="json",
                     help="write the report as JSON (use it later as a --compare baseline)")
+    ap.add_argument("--page-limit", type=float, help="main-body page limit (fails above it)")
+    ap.add_argument("--budget-note", help=argparse.SUPPRESS)
     ap.add_argument("--compare", metavar="BASELINE_JSON",
                     help="compare with a saved report; exit 1 only if the layout got worse")
     args = ap.parse_args(argv)
@@ -272,7 +293,7 @@ def main(argv=None):
         print(f"[error] aux file not found: {aux} (compile the paper first)", file=sys.stderr)
         return 2
 
-    geom, floats, refs, newlabels = parse_aux(aux)
+    geom, floats, refs, newlabels, marks, block = parse_aux(aux)
     log_issues, notes, tex_errors = scan_log(log)
     report = {"aux": aux, "log": log, "mode": "floatcheck" if geom else "fallback", "pages": count_pages(log),
               "floats": [], "log_issues": log_issues, "notes": notes, "tex_errors": tex_errors}
@@ -317,12 +338,30 @@ def main(argv=None):
 
     if report["pages"]:
         print(f"Total pages: {report['pages']}")
+    body, end = body_length(geom, marks, block)
+    limit = args.page_limit
+    over = False
+    if body is not None:
+        what = "bibliography" if marks.get("bibliography") is end else "appendix"
+        report["body_pages"] = body
+        print(f"Main body: {body:.2f} pages (until the {what} starts on p.{end.page})")
+        if limit:
+            over = body > limit
+            report["page_limit"] = limit
+            print(("FAIL" if over else "ok  ") + f" page budget: {body:.2f} / {limit} pages"
+                  + (" -- trim the body" if over else f" ({limit - body:.2f} to spare)"))
+            if 0 <= limit - body < 0.5:
+                print("[note] less than half a page to spare: a different font or class version can push it over")
+    elif limit:
+        print("[note] page budget not checked: no bibliography/appendix marker (build with floatcheck.sty)")
+    if args.budget_note:
+        print(f"[note] {args.budget_note}")
     if args.json:
         with open(args.json, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
     if args.compare:
-        return compare(report, args.compare) or (1 if tex_errors else 0)
-    return 1 if (n_err or tex_errors) else 0
+        return compare(report, args.compare) or (1 if (tex_errors or over) else 0)
+    return 1 if (n_err or tex_errors or over) else 0
 
 
 def count_pages(log_path):

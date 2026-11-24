@@ -15,6 +15,8 @@
 %%   \FCdef{seq}{type}{starred}{page}{physpage}{x}{y}    where \begin{<float>} is in the text
 %%   \FCfloat{label}{seq}{type}{starred}{page}{physpage}{x}{y}   where the float was placed
 %%   \FCref{labels}{page}{physpage}{x}{y}                each \ref-like call in running text
+%%   \FCmark{what}{page}{physpage}{x}{y}                 start of the bibliography / appendix
+%%   \FCblock{top}{bottom}                               text block top and bottom (y from page bottom)
 %%
 %% The package only adds whatsits (no boxes, glue or penalties), so the layout
 %% is the same as a normal build.
@@ -99,12 +101,21 @@
     \immediate\write\@auxout{\string\providecommand\string\FCdef[7]{}}%
     \immediate\write\@auxout{\string\providecommand\string\FCfloat[8]{}}%
     \immediate\write\@auxout{\string\providecommand\string\FCref[5]{}}%
+    \immediate\write\@auxout{\string\providecommand\string\FCmark[5]{}}%
+    \immediate\write\@auxout{\string\providecommand\string\FCblock[2]{}}%
+    \immediate\write\@auxout{\string\FCblock
+      {\number\dimexpr \paperheight-1in-\voffset-\topmargin-\headheight-\headsep\relax}%
+      {\number\dimexpr \paperheight-1in-\voffset-\topmargin-\headheight-\headsep-\textheight\relax}}%
     \immediate\write\@auxout{\string\FCgeom
       {\if@twocolumn 1\else 0\fi}{\if@twoside 1\else 0\fi}%
       {\number\dimexpr 1in+\hoffset+\oddsidemargin\relax}%
       {\number\dimexpr 1in+\hoffset+\evensidemargin\relax}%
       {\number\columnwidth}{\number\columnsep}}%
   \fi}
+% ---- where the main body ends (for page budgets) ----
+\AddToHook{env/thebibliography/begin}{\FC@write{\string\FCmark{bibliography}}}
+\AddToHook{cmd/printbibliography/before}{\FC@write{\string\FCmark{bibliography}}}
+\AddToHook{cmd/appendix/before}{\FC@write{\string\FCmark{appendix}}}
 \def\FC@label@opt[#1]#2{\FC@orig@label[#1]{#2}\FC@labelhook{#2}}
 \def\FC@label@plain#1{\FC@orig@label{#1}\FC@labelhook{#1}}
 

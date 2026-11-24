@@ -78,6 +78,8 @@ The skill is an executable SOP, loaded in three layers to keep the agent's conte
 | 2. SOP | `SKILL.md` body: ground rules, human approval gates, routing table, 9 branches (Read → Do → Verify), failure recovery, Definition of Done | When the skill triggers |
 | 3. Resources | `references/` (per-section writing rules, figure / layout / bibliography rules, checker codes) and `assets/` (templates, example data) | When a branch needs them |
 
+**Venue-aware.** Pass `--venue` (`ieee`, `acm`, `acl`, `neurips`, `icml`, `iclr`, `usenix`, `lncs`) and figure widths, caption case, required sections and the page budget follow that venue (`references/venues.json`).
+
 **Deterministic work goes to scripts.** Statistics, figure sizes, float positions, labels and references, and bibliography fields are computed and checked by scripts. The model interprets the request, chooses the branch, writes and synthesizes. Every branch ends with a script check as its completion criterion. On failure the agent fixes the issue using `references/lint_rules.md` and reruns the check, at most 3 times per issue, then reports to the user.
 
 **Safety boundaries.** The agent asks before replacing several existing paragraphs, deleting sections, figures or bibliography entries, installing software, or writing to the sentence bank. For submissions, uploads and emails it only prepares the material and never acts on the user's behalf.
@@ -91,14 +93,15 @@ skills/top-tier-paper-writing/
 ├── EVOLUTION_LOG.md              # evolution history
 ├── evolution_ledger.json         # rule evidence ledger (maintained by evolve.py; never edit by hand)
 ├── scripts/                      # deterministic scripts (all with PEP 723 headers, runnable via `uv run`)
-│   ├── check_env.py              # environment readiness (plot / layout / bib / lint / network)
-│   ├── lint_paper.py             # static .tex checks: labels/refs, caption case and conclusions, \vspace, vague wording, number dumping, abstract/conclusion length
-│   ├── result_stats.py           # margins, ranks, ranges, drop rates and "not best" settings from result CSVs
-│   ├── plot_data_curves.py       # multi-seed curves (mean ± std, sensitivity optimum, two-phase split)
-│   ├── plot_bar_ablation.py      # grouped bars (error bars, difference to the full model)
-│   ├── gen_architecture_diagram.py  # architecture diagram from a JSON spec (numbered steps, overlap warnings)
+│   ├── check_env.py              # environment readiness (plot / layout / bib / lint / network; --venue: class files and fonts)
+│   ├── lint_paper.py             # static .tex checks: labels/refs, caption case and conclusions, \vspace, vague wording, overclaiming, number dumping, lengths, venue-required sections
+│   ├── result_stats.py           # margins, ranks, ranges, condition changes and the exceptions to report (method or measurement papers)
+│   ├── plot_data_curves.py       # curves: mean ± std, small multiples, log/inverted axes, shaded regimes, two-phase split
+│   ├── plot_bar_ablation.py      # grouped bars; paired before/after mode; error bars only for real variation
+│   ├── gen_architecture_diagram.py  # architecture diagram from a JSON spec (numbered steps; exits 1 on any collision)
+│   ├── compose_examples.py       # grid of example inputs (clean vs. attacked) at the venue's width
 │   ├── pubstyle.py               # shared plot style (sizes, fonts, Okabe-Ito palette)
-│   ├── check_figure.py           # figure PDF checks: width, Type 3 fonts, vector output
+│   ├── check_figure.py           # figure PDF checks: width (per venue), Type 3 fonts, vector output
 │   ├── layout_check.py           # one command: diagnostic build + float checks + baseline compare
 │   ├── check_layout.py, floatcheck.sty  # float position recording and analysis
 │   ├── check_bib.py              # .bib checks: duplicates, missing fields, unbraced acronyms, preprints, missing citations
@@ -114,6 +117,7 @@ skills/top-tier-paper-writing/
 │   ├── revision_and_submission.md# backward consistency, arXiv versions, journal extensions
 │   ├── domain_and_sentence_mining.md
 │   ├── lint_rules.md             # every checker code, its meaning and its fix
+│   ├── venues.json               # venue profiles: widths, caption case, required sections, page limits, class files
 │   ├── mechanism_sentence_bank.md, domain_taxonomies.json
 │   └── case_lessons_ieee_sp.md, case_lessons_ieee_tcc.md  # lessons from two real submissions
 └── assets/
@@ -176,15 +180,16 @@ The agent calls these scripts as the SOP prescribes, but you can also run them y
 ```bash
 S=skills/top-tier-paper-writing/scripts
 
-python3 $S/check_env.py                                          # environment check
-uv run $S/lint_paper.py paper/main.tex                           # static manuscript checks
+python3 $S/check_env.py --venue acl --paper-dir paper/          # environment check (incl. venue class and fonts)
+uv run $S/lint_paper.py paper/main.tex --venue acl               # static manuscript checks
 uv run $S/result_stats.py --data results.csv --ours "FedPE"      # evidence numbers before writing the analysis
 uv run $S/plot_data_curves.py --data curves.csv --ours "FedPE (Ours)" \
     --xlabel "Communication rounds" --ylabel "Test accuracy (%)" --out fig_conv.pdf
 uv run $S/plot_bar_ablation.py --data ablation.csv --ours "Full model" --annotate-delta --out fig_abl.pdf
+uv run $S/plot_bar_ablation.py --data defense.csv --paired "No defense" "With defense" --venue acl --out fig_def.pdf
 uv run $S/gen_architecture_diagram.py --spec fig_arch.json --out fig_arch.pdf
-uv run $S/check_figure.py fig_*.pdf                              # width / font checks
-uv run $S/layout_check.py paper/main.tex --save-baseline before.json   # before editing
+uv run $S/check_figure.py --venue acl fig_*.pdf                 # width / font checks for the venue
+uv run $S/layout_check.py paper/main.tex --venue acl --save-baseline before.json   # before editing (+ page budget)
 uv run $S/layout_check.py paper/main.tex --compare before.json         # after editing: exit 1 if worse
 uv run $S/check_bib.py paper/refs.bib --tex paper/main.tex
 ```
@@ -268,6 +273,8 @@ Skill 按“可执行 SOP”组织，分三层加载，尽量少占 Agent 的上
 | 2. SOP | `SKILL.md` 正文：总规则、人工确认关口、需求分流表、9 个分支（读取 → 执行 → 验证）、故障处理、完成标准（Definition of Done） | 触发 Skill 时 |
 | 3. 资源 | `references/`（按章节拆分的写作规范、图表/排版/参考文献规则、检查代码表）、`assets/`（模板与示例数据） | 进入对应分支时 |
 
+**按会议适配**：传入 `--venue`（`ieee`、`acm`、`acl`、`neurips`、`icml`、`iclr`、`usenix`、`lncs`），图宽、Caption 大小写、必需章节与页数预算都随会议而定（`references/venues.json`）。
+
 **确定性工作交给脚本**：统计量、图表尺寸、浮动体位置、标签与引用、参考文献字段都由脚本计算和检查，模型负责理解意图、选择分支、写作与综合。每个分支都以脚本检查作为完成标准，失败时按 `references/lint_rules.md` 修复并重跑（同一问题最多 3 次，之后向用户报告）。
 
 **安全边界**：替换多段已有正文、删除章节/图表/文献条目、安装软件、写入句式库前必须征得用户同意；投稿、上传、发邮件只准备材料，不代替用户执行。
@@ -288,7 +295,8 @@ skills/top-tier-paper-writing/
 │   ├── plot_bar_ablation.py      # 分组柱状图（误差棒、相对完整模型的增量）
 │   ├── gen_architecture_diagram.py  # 由 JSON 规格生成架构图（带编号步骤，自动检查重叠）
 │   ├── pubstyle.py               # 共享绘图样式（尺寸、字体、Okabe-Ito 配色）
-│   ├── check_figure.py           # 图 PDF 检查：宽度、Type 3 字体、矢量
+│   ├── check_figure.py           # 图 PDF 检查：宽度（按会议）、Type 3 字体、矢量
+│   ├── compose_examples.py       # 示例输入网格（干净 vs. 攻击），按会议宽度
 │   ├── layout_check.py           # 一条命令：诊断编译 + 浮动体检查 + 基线对比
 │   ├── check_layout.py, floatcheck.sty  # 浮动体位置记录与分析
 │   ├── check_bib.py              # .bib 检查：重复、缺字段、未加括号的缩写、预印本、缺失引用
@@ -304,6 +312,7 @@ skills/top-tier-paper-writing/
 │   ├── revision_and_submission.md# 补实验后回溯、arXiv 版本、期刊扩展
 │   ├── domain_and_sentence_mining.md
 │   ├── lint_rules.md             # 所有检查代码的含义与修复方法
+│   ├── venues.json               # 会议版式：栏宽、Caption 大小写、必需章节、页数限制、模板文件
 │   ├── mechanism_sentence_bank.md, domain_taxonomies.json
 │   └── case_lessons_ieee_sp.md, case_lessons_ieee_tcc.md  # 两篇真实论文的修改与投稿经验
 └── assets/
@@ -366,15 +375,16 @@ docs/
 ```bash
 S=skills/top-tier-paper-writing/scripts
 
-python3 $S/check_env.py                                          # 环境检查
-uv run $S/lint_paper.py paper/main.tex                           # 正文静态检查
+python3 $S/check_env.py --venue acl --paper-dir paper/          # 环境检查（含会议模板与字体）
+uv run $S/lint_paper.py paper/main.tex --venue acl               # 正文静态检查
 uv run $S/result_stats.py --data results.csv --ours "FedPE"      # 写实验分析前先算证据数字
 uv run $S/plot_data_curves.py --data curves.csv --ours "FedPE (Ours)" \
     --xlabel "Communication rounds" --ylabel "Test accuracy (%)" --out fig_conv.pdf
 uv run $S/plot_bar_ablation.py --data ablation.csv --ours "Full model" --annotate-delta --out fig_abl.pdf
+uv run $S/plot_bar_ablation.py --data defense.csv --paired "No defense" "With defense" --venue acl --out fig_def.pdf
 uv run $S/gen_architecture_diagram.py --spec fig_arch.json --out fig_arch.pdf
-uv run $S/check_figure.py fig_*.pdf                              # 宽度 / 字体检查
-uv run $S/layout_check.py paper/main.tex --save-baseline before.json   # 改稿前
+uv run $S/check_figure.py --venue acl fig_*.pdf                 # 按会议检查宽度 / 字体
+uv run $S/layout_check.py paper/main.tex --venue acl --save-baseline before.json   # 改稿前（含页数预算）
 uv run $S/layout_check.py paper/main.tex --compare before.json         # 改稿后：变差则退出码为 1
 uv run $S/check_bib.py paper/refs.bib --tex paper/main.tex
 ```

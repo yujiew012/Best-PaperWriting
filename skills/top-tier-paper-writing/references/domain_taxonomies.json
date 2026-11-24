@@ -11,18 +11,19 @@
         "IEEE TIFS"
       ],
       "keywords": [
-        "security",
-        "privacy",
-        "attack",
-        "defense",
         "adversarial",
-        "poisoning",
         "backdoor",
         "byzantine",
-        "threat model",
-        "leakage",
-        "differential privacy",
         "cryptography",
+        "differential privacy",
+        "fuzzing",
+        "leakage",
+        "malware",
+        "membership inference",
+        "poisoning",
+        "privacy",
+        "side channel",
+        "threat model",
         "zero-knowledge"
       ],
       "structural_requirements": {
@@ -53,7 +54,22 @@
         }
       ],
       "causal_mechanism_focus": "Explain how the defense bound bounds the adversarial gradient perturbation, or how cryptographic blinding masks intermediate states without introducing irreducible utility degradation.",
-      "template": "references/domains/security_privacy.md"
+      "template": "references/domains/security_privacy.md",
+      "strong_keywords": [
+        "threat model",
+        "backdoor",
+        "poisoning",
+        "differential privacy",
+        "membership inference",
+        "byzantine",
+        "side channel",
+        "zero-knowledge"
+      ],
+      "weak_keywords": [
+        "attack",
+        "defense",
+        "security"
+      ]
     },
     "distributed_systems": {
       "name": "Computer Systems & Distributed Computing",
@@ -67,15 +83,9 @@
         "IEEE TCC"
       ],
       "keywords": [
-        "systems",
-        "distributed",
         "throughput",
         "latency",
-        "storage",
-        "cloud",
         "scheduling",
-        "cache",
-        "memory",
         "kernel",
         "rpc",
         "concurrency",
@@ -111,7 +121,22 @@
         }
       ],
       "causal_mechanism_focus": "Map performance speedups to hardware bottleneck alleviation (e.g. eliminating lock contention, zero-copy serialization, or overlapping communication with computation).",
-      "template": "references/domains/distributed_systems.md"
+      "template": "references/domains/distributed_systems.md",
+      "strong_keywords": [
+        "tail latency",
+        "p99",
+        "throughput",
+        "fault tolerance",
+        "rpc"
+      ],
+      "weak_keywords": [
+        "cache",
+        "cloud",
+        "distributed",
+        "memory",
+        "storage",
+        "systems"
+      ]
     },
     "machine_learning_fl": {
       "name": "Machine Learning & Federated Learning Algorithms",
@@ -130,11 +155,8 @@
         "non-iid",
         "client drift",
         "local training",
-        "aggregation",
         "communication rounds",
         "dirichlet",
-        "representation learning",
-        "generalization",
         "catastrophic forgetting",
         "continual learning"
       ],
@@ -166,7 +188,18 @@
         }
       ],
       "causal_mechanism_focus": "Attribute accuracy gains to regularizer penalization of representation drift, dynamic prompt adaptation, or gradient orthogonalization across local optimization steps.",
-      "template": "references/domains/machine_learning_fl.md"
+      "template": "references/domains/machine_learning_fl.md",
+      "strong_keywords": [
+        "federated learning",
+        "non-iid",
+        "client drift",
+        "communication rounds"
+      ],
+      "weak_keywords": [
+        "aggregation",
+        "generalization",
+        "representation learning"
+      ]
     },
     "nlp_llm": {
       "name": "Natural Language Processing & Large Language Models",
@@ -178,18 +211,15 @@
         "Transactions of ACL"
       ],
       "keywords": [
-        "llm",
-        "large language model",
-        "prompt",
-        "reasoning",
-        "hallucination",
-        "alignment",
-        "rlhf",
+        "chain-of-thought",
         "dpo",
-        "agent",
-        "benchmark",
+        "hallucination",
         "in-context learning",
-        "instruction tuning"
+        "instruction tuning",
+        "language model",
+        "large language model",
+        "retrieval-augmented generation",
+        "rlhf"
       ],
       "structural_requirements": {
         "mandatory_sections": [
@@ -219,7 +249,22 @@
         }
       ],
       "causal_mechanism_focus": "Explain how Chain-of-Thought routing, preference optimization, or dynamic token selection reduces error propagation across multi-step generative horizons.",
-      "template": "references/domains/nlp_llm.md"
+      "template": "references/domains/nlp_llm.md",
+      "strong_keywords": [
+        "in-context learning",
+        "instruction tuning",
+        "rlhf",
+        "dpo",
+        "hallucination"
+      ],
+      "weak_keywords": [
+        "agent",
+        "alignment",
+        "benchmark",
+        "llm",
+        "prompt",
+        "reasoning"
+      ]
     },
     "llm_agent_security": {
       "name": "LLM & Agent Security",
@@ -233,21 +278,32 @@
         "ICLR"
       ],
       "keywords": [
-        "prompt injection",
+        "adversarial prompt",
+        "agent security",
+        "attack success rate",
+        "data exfiltration",
+        "guardrail",
+        "harmful content",
+        "harmful request",
         "indirect prompt injection",
         "jailbreak",
         "llm agent",
-        "tool use",
-        "agent security",
         "llm security",
-        "red teaming",
-        "guardrail",
-        "safety alignment",
-        "data exfiltration",
-        "tool poisoning",
+        "mllm",
         "model context protocol",
-        "harmful content",
-        "refusal"
+        "multimodal llm",
+        "prompt injection",
+        "red teaming",
+        "refusal",
+        "safety alignment",
+        "safety guardrail",
+        "system prompt",
+        "tool poisoning",
+        "tool use",
+        "unsafe",
+        "vision-language model",
+        "visual jailbreak",
+        "vlm"
       ],
       "structural_requirements": {
         "mandatory_sections": [
@@ -279,7 +335,20 @@
         }
       ],
       "causal_mechanism_focus": "Explain which trust boundary the attack crosses or the defense enforces (instruction/data separation, privilege isolation, provenance checks) and why the mechanism survives adaptive attackers.",
-      "template": "references/domains/llm_agent_security.md"
+      "template": "references/domains/llm_agent_security.md",
+      "strong_keywords": [
+        "jailbreak",
+        "prompt injection",
+        "indirect prompt injection",
+        "red teaming",
+        "guardrail",
+        "safety alignment",
+        "tool poisoning",
+        "data exfiltration",
+        "harmful request",
+        "visual jailbreak"
+      ]
     }
-  }
+  },
+  "$comment": "keywords weigh 2 (3 if multi-word), strong_keywords 5, weak_keywords 1 (generic terms shared across areas)."
 }

@@ -19,12 +19,15 @@ Follows \\input / \\include / \\subfile from the main file and reports:
   W302  vague or hedging phrase ("we hope", "very", "clearly", ...)          warning
   W303  paragraph quotes >= N numbers (reads the table instead of analysing) warning
   W304  "Fig. \\ref" with a breakable space (use Fig.~\\ref)                  warning
+  W305  overclaiming verb (proves, conclusively, confirms that, ...) outside a formal proof warning
   W401  abstract length outside 150-250 words                               warning
   W402  conclusion length outside 120-200 words                             warning
+  W403  a section the venue requires is missing (--venue, e.g. ACL Limitations) warning
 
     uv run lint_paper.py paper/main.tex
     uv run lint_paper.py paper/main.tex --caption-style sentence --json lint.json
     uv run lint_paper.py paper/main.tex --disable W302,W304 --strict
+    uv run lint_paper.py paper/main.tex --venue acl     # caption case + required sections from the venue
 
 Exit codes: 0 no errors (warnings allowed unless --strict), 1 errors, 2 usage error.
 Rule rationale and fixes: references/lint_rules.md.
@@ -42,6 +45,11 @@ VAGUE = [
     r"\bwe hope\b", r"\bvery\b", r"\bquite\b", r"\bobviously\b", r"\bclearly\b", r"\bit is worth noting\b",
     r"\bit should be noted\b", r"\bin order to\b", r"\ba lot of\b", r"\bextremely\b", r"\bhuge\b",
     r"\bwe believe\b", r"\bto some extent\b", r"\bsomewhat\b", r"\bbasically\b", r"\bactually\b",
+]
+OVERCLAIM = [
+    r"\bconclusively\b", r"\bprov(?:e|es|ed|en|ing)\b(?!\s+(?:to|useful|difficult|hard|effective))",
+    r"\bconfirm(?:s|ed|ing)? (?:that|our|the hypothesis)\b", r"\bundoubtedly\b", r"\bdefinitively\b",
+    r"\bunequivocally\b", r"\bindisputabl[ey]\b", r"\bwithout (?:any )?doubt\b",
 ]
 CONCLUSION_WORDS = [
     r"\boutperform\w*", r"\bsuperior\b", r"\bdemonstrat\w+", r"\bshows? that\b", r"\bclearly\b",
@@ -82,7 +90,8 @@ def load(path, seen=None):
     with open(path, encoding="utf-8", errors="replace") as f:
         for no, line in enumerate(f, 1):
             line = strip_comment(line.rstrip("\n"))
-            m = re.search(r"\\(?:input|include|subfile)\{([^}]+)\}", line)
+            m = (re.search(r"\\(?:input|include|subfile|@@input|InputIfFileExists)\{([^}]+)\}", line)
+                 or re.search(r"\\(?:input|@@input)\s+([\w./-]+\.tex)\b", line))
             if m:
                 inc = os.path.join(base, m.group(1).strip())
                 if not inc.endswith(".tex"):
@@ -162,7 +171,7 @@ def caption_case_issue(text, kind):
     return ratio >= 0.6 if kind == "title-in-figure" else ratio <= 0.4
 
 
-def run(main_tex, caption_style, num_threshold, disabled):
+def run(main_tex, caption_style, num_threshold, disabled, required_sections=()):
     root = os.path.dirname(os.path.abspath(main_tex))
     doc = Doc(load(main_tex), root)
     text = doc.text
@@ -238,6 +247,14 @@ def run(main_tex, caption_style, num_threshold, disabled):
     for pat in VAGUE:
         for m in re.finditer(pat, body, re.I):
             add("W302", body_start + m.start(), f"vague/hedging phrase '{m.group(0)}'")
+    # overclaiming verbs, except inside theorem/proof/lemma environments
+    no_proofs = re.sub(r"\\begin\{(proof|theorem|lemma|proposition|corollary)\*?\}.*?\\end\{\1\*?\}",
+                       lambda mm: " " * len(mm.group(0)), body, flags=re.S)
+    for pat in OVERCLAIM:
+        for m in re.finditer(pat, no_proofs, re.I):
+            add("W305", body_start + m.start(), f"overclaiming '{m.group(0)}': match the wording to the evidence "
+                                                "(ablation -> causal; correlation -> 'is consistent with'; "
+                                                "none -> hypothesis)")
     for m in re.finditer(r"\b(Fig\.|Figs\.|Figure|Table|Tables|Section|Sec\.|Eq\.|Algorithm|Appendix) "
                          r"\\(?:ref|cref|autoref)\{", body):
         add("W304", body_start + m.start(), f"use '{m.group(1)}~\\ref' (non-breaking space)")
@@ -245,13 +262,20 @@ def run(main_tex, caption_style, num_threshold, disabled):
     # paragraphs that dump numbers (outside floats / tabulars / math displays)
     stripped = re.sub(r"\\begin\{(" + env_re + r"|tabular\*?|table|equation\*?|align\*?)\}.*?\\end\{\1\}",
                       lambda mm: " " * len(mm.group(0)), body, flags=re.S)
-    pos = 0
-    for para in re.split(r"\n\s*\n", stripped):
-        nums = re.findall(r"(?<![\w.])\d+(?:\.\d+)?\s*(?:\\%|%|pp|×|x\b)|(?<![\w.])\d+\.\d+", para)
+    # real paragraph spans (blank-line separated), so reported lines never drift
+    for pm in re.finditer(r"(?:[^\n]|\n(?!\s*\n))+", stripped):
+        para = pm.group(0)
+        if not para.strip():
+            continue
+        # a reported number: a decimal or a percentage/pp/x value that is not part of an
+        # identifier such as GPT-4.1, Seed-1.6, 4.5V or 235B
+        nums = [m.group(0) for m in re.finditer(
+            r"(?<![\w.\-])\d+(?:\.\d+)?(?![\w.])(?:\s*(?:\\%|%|pp\b|×|x\b))?", para)
+            if "." in m.group(0) or re.search(r"%|pp|×|x$", m.group(0))]
         if len(nums) >= num_threshold:
-            add("W303", body_start + pos + (len(para) - len(para.lstrip())),
+            lead = len(para) - len(para.lstrip())
+            add("W303", body_start + pm.start() + lead,
                 f"paragraph quotes {len(nums)} numbers; keep 1-3 key numbers and let the table carry the rest")
-        pos += len(para) + 2
 
     # abstract / conclusion length
     m = re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}", text, re.S)
@@ -266,6 +290,12 @@ def run(main_tex, caption_style, num_threshold, disabled):
         if not 120 <= n <= 200:
             add("W402", m.start(), f"conclusion has {n} words (target 120-200, two paragraphs)")
 
+    titles = [(m.start(), plain(braced(text, m.end() - 1)[0]).lower())
+              for m in re.finditer(r"\\(?:section|subsection|paragraph)\*?(?:\[[^\]]*\])?\{", text)]
+    for req in required_sections:
+        if not any(req.lower() in title for _, title in titles):
+            add("W403", body_start, f"the venue requires a '{req}' section; none found")
+
     issues.sort(key=lambda i: (i["code"][0] != "E", i["code"], i["where"]))
     return issues
 
@@ -273,8 +303,11 @@ def run(main_tex, caption_style, num_threshold, disabled):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("main_tex")
-    ap.add_argument("--caption-style", choices=["ieee", "sentence", "off"], default="ieee",
-                    help="ieee: figures sentence case, tables Title Case; sentence: both sentence case")
+    ap.add_argument("--caption-style", choices=["ieee", "sentence", "off"],
+                    help="ieee: figures sentence case, tables Title Case; sentence: both sentence case "
+                         "(default: from --venue, else ieee)")
+    ap.add_argument("--venue", help="venue profile from references/venues.json: sets the caption style and the "
+                                    "required sections")
     ap.add_argument("--numbers", type=int, default=6, help="W303 threshold (numbers per paragraph)")
     ap.add_argument("--disable", default="", help="comma-separated codes to skip, e.g. W302,W304")
     ap.add_argument("--strict", action="store_true", help="exit 1 on warnings too")
@@ -285,8 +318,22 @@ def main(argv=None):
         print(f"[error] not found: {args.main_tex}", file=sys.stderr)
         return 2
 
-    issues = run(args.main_tex, args.caption_style, args.numbers,
-                 {c.strip() for c in args.disable.split(",") if c.strip()})
+    style, required = args.caption_style, ()
+    if args.venue:
+        vpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "references", "venues.json")
+        with open(vpath, encoding="utf-8") as f:
+            venues = json.load(f)["venues"]
+        if args.venue not in venues:
+            print(f"[error] unknown venue '{args.venue}'; choose from: {', '.join(venues)}", file=sys.stderr)
+            return 2
+        v = venues[args.venue]
+        required = v.get("required_sections", [])
+        if style is None:
+            case = v.get("caption_case", {})
+            style = ("off" if not case.get("figure") else
+                     "ieee" if case.get("table") == "title" else "sentence")
+    issues = run(args.main_tex, style or "ieee", args.numbers,
+                 {c.strip() for c in args.disable.split(",") if c.strip()}, required)
     errors = [i for i in issues if i["code"].startswith("E")]
     warns = [i for i in issues if i["code"].startswith("W")]
     shown = {}

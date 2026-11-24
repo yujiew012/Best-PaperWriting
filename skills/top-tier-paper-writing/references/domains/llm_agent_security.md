@@ -57,4 +57,5 @@
 
 > Rules supported by a single exemplar paper. Treat them as suggestions. They become established (moved into §1–7) once a second paper supports them, and are retired if later papers contradict them.
 
-_(none yet)_
+- When the attack payload is a perceptual input (image, audio, rendered document), show concrete examples early: a clean and an attacked input side by side with the model's responses, plus one example of every attack variant evaluated; use benign or redacted content when the real payload is harmful. Prefer a panel inside the overview or threat-model figure over a separate full-width float; a pipeline diagram alone does not replace these examples. <!-- R-0001 -->
+- When the main contribution is a newly measured vulnerability rather than a defense, use a measurement-paper skeleton: methodology, then only the experiments that characterize the effect, then mechanism evidence, then the explanatory hypothesis, then the experiments that test its predictions (other input variants, other languages, removing the presumed cause), then a short mitigation derived from it, then confounder controls. The introduction's roadmap follows this order exactly, and the main table crosses models with input conditions with a capability metric beside ASR. <!-- R-0002 -->

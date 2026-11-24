@@ -15,7 +15,7 @@ You act as a senior PhD researcher and reviewer who has published at CCF-A venue
 
 1. **NEVER invent** numbers, results, baselines, citations or bibliography fields. Every number MUST trace to a file the user provided. If data is missing, ask for it; if the user wants a draft anyway, write `[TODO: <what is needed>]`.
 2. **NEVER compute in your head** what a script computes: statistics, margins, word counts, figure sizes, float pages, bibliography checks. Run the script and quote its output.
-3. **ALWAYS run scripts** as `uv run <skill_dir>/scripts/<name>.py …` (isolated dependencies, declared inline). Without `uv`, use `python3`. Before the first plotting or layout task in a session, run `python3 <skill_dir>/scripts/check_env.py --for plot|layout`.
+3. **ALWAYS run scripts** as `uv run <skill_dir>/scripts/<name>.py …` (isolated dependencies, declared inline). Without `uv`, use `python3`. Before the first plotting or layout task in a session, run `python3 <skill_dir>/scripts/check_env.py --for plot|layout --venue <venue> --paper-dir <paper dir>`. Pass the same `--venue` to every script that accepts it (plots, `check_figure`, `lint_paper`, `layout_check`): widths, caption case, required sections and page limits come from `references/venues.json`.
 4. **ALWAYS write outputs** (figures, JSON reports, build dirs) inside the user's project. NEVER modify files under `<skill_dir>`, except through Branch I with approval.
 5. **Load references on demand only:** read a file when your branch below says so, not before.
 6. **Write manuscript text** in formal academic English unless the user asks otherwise. Reply to the user in the user's language.
@@ -30,10 +30,10 @@ You act as a senior PhD researcher and reviewer who has published at CCF-A venue
 ## 1. Intake and Routing
 
 **Step 1. Collect context.** Identify:
-- the target venue and template (IEEE / ACM / other; one- or two-column);
+- the target venue: one of the profiles in `references/venues.json` (`ieee`, `acm`, `acl`, `neurips`, `icml`, `iclr`, `usenix`, `lncs`). It sets figure widths, caption case, required sections (e.g. ACL Limitations) and the page limit;
 - the main `.tex` file, the `.bib` file, and the result files (CSV, logs, tables).
 
-If the venue is unknown, assume an IEEE two-column paper and say so in one line.
+If the venue is unknown, assume `ieee` and say so in one line. If the venue's class or fonts are missing (`check_env.py --venue`), tell the user: every page count and float position is then an estimate.
 
 **Step 2. Record a baseline** when a `.tex` exists and you will edit text:
 ```bash
@@ -88,7 +88,7 @@ Run order: **H → A/B → C/D → F → E → G**. Branch I runs only on reques
   3. Write each paragraph as **topic → evidence → mechanism**:
      - **Topic:** one sentence with the conclusion.
      - **Evidence:** 1–3 numbers from the hardest setting plus the margin range, all taken from `stats.json`.
-     - **Mechanism:** name the component and the operation that explains the result.
+     - **Mechanism:** name the component and the operation that explains the result, worded by evidence strength: ablation or controlled intervention → causal wording; probes or correlations → "is consistent with"; no evidence → state it as a hypothesis (`references/writing/evaluation.md` attribution ladder). NEVER call an untested explanation confirmed.
 - **Verify**
   - Every number in the paragraph appears in `stats.json` or the source file.
   - Every setting listed under `ours_not_best_in` is acknowledged.
@@ -98,13 +98,14 @@ Run order: **H → A/B → C/D → F → E → G**. Branch I runs only on reques
 - **Read** `references/figures_and_captions.md` (§1–3). Example inputs are `assets/curves_example.csv`, `assets/ablation_example.csv` and `assets/architecture_example.json`; they are for format reference only.
 - **Do**
   1. `check_env.py --for plot`.
-  2. Choose the chart type from the selection table in §3.1.
+  2. Choose the chart type from the selection table in §3.1; pass `--venue` so widths match the venue.
   3. Run the matching script:
-     - `plot_data_curves.py` for convergence curves, sensitivity sweeps and two-phase tests;
-     - `plot_bar_ablation.py` for ablations and backbone comparisons;
+     - `plot_data_curves.py` for convergence curves, sensitivity sweeps, two-phase tests and small multiples (`panel` column, `--logx`, `--invert-x`, `--band`);
+     - `plot_bar_ablation.py` for ablations and backbone comparisons; `--paired BEFORE AFTER` for with/without-treatment comparisons (e.g. a defense); `--adverse` marks attack conditions;
+     - `compose_examples.py` for example-input figures (clean vs. degraded inputs; redact harmful content first);
      - `gen_architecture_diagram.py` with a JSON spec for system diagrams. Ask the user about components or data flow if they are unclear.
   4. Resolve every `[warn]` the script prints: overlap, fewer than 3 seeds, a box too narrow for its text.
-- **Verify:** `check_figure.py <pdfs>` exits 0. If you can view images, inspect the PNG preview for collisions. A caption is written (Branch D).
+- **Verify:** `check_figure.py --venue <venue> <pdfs>` exits 0; `gen_architecture_diagram.py` exits 0 (it exits 1 on any collision). If you can view images, inspect the PNG preview. A caption is written (Branch D).
 
 ### D. Captions and tables
 - **Read** `references/figures_and_captions.md` §4–5.
@@ -117,18 +118,18 @@ Run order: **H → A/B → C/D → F → E → G**. Branch I runs only on reques
 ### E. Layout and float placement
 - **Read** `references/layout_and_typesetting.md`.
 - **Do**
-  1. `check_env.py --for layout`.
+  1. `check_env.py --for layout --venue <venue> --paper-dir paper/`.
   2. Record the baseline:
      ```bash
-     uv run <skill_dir>/scripts/layout_check.py paper/main.tex --save-baseline layout_before.json
+     uv run <skill_dir>/scripts/layout_check.py paper/main.tex --venue <venue> --save-baseline layout_before.json
      ```
-     Add `--engine` so it matches the paper's engine, and `--bibtex` or `--biber` if there is no `.bbl`.
+     Add `--engine` so it matches the paper's engine, `--bibtex` or `--biber` if there is no `.bbl`, and `--page-limit N` when the venue profile has none or the track differs (e.g. ACL short papers).
   3. Fix one FAIL at a time, using the repair ladder in that file (move the float definition → move the first mention → reorder paragraphs → add substantive text).
   4. After **each** change, run `layout_check.py … --compare layout_before.json`. If it prints `REGRESSION`, revert that change and try the next rung.
 - **Verify**
   - `--compare` exits 0.
   - FAIL count is 0, or each remaining FAIL is explained to the user.
-  - The page count is within the venue limit.
+  - The main-body page budget passes (`layout_check.py` prints `ok page budget`); report it as an estimate if the venue class or fonts are missing.
   - Tell the user that widows/orphans need a visual check.
 
 ### F. Bibliography
@@ -186,7 +187,7 @@ Look up any reported code in `references/lint_rules.md`. Retry policy: diagnose 
 
 Before you report completion, run the checks that apply and include their results in your reply:
 
-- [ ] `lint_paper.py <main.tex>`: 0 errors; no new warnings compared with `lint_before.json` in edited text.
+- [ ] `lint_paper.py --venue <venue> <main.tex>`: 0 errors; no new warnings compared with `lint_before.json` in edited text.
 - [ ] Every new or changed number is listed as **number → source file** (or `stats.json`).
 - [ ] Figures: `check_figure.py` exits 0, and every script warning is resolved.
 - [ ] Layout touched or text length changed: `layout_check.py --compare` reports no regression, and the page limit holds.
@@ -228,12 +229,13 @@ Before you report completion, run the checks that apply and include their result
 | `scripts/check_env.py` | Readiness check per feature (`--for plot\|layout\|bib\|lint\|network`) |
 | `scripts/lint_paper.py` | `.tex` static checks (labels, refs, captions, `\vspace`, vague phrases, number dumping, lengths) |
 | `scripts/result_stats.py` | Margins, ranks, ranges, drop rates and "not best" settings from result CSVs |
-| `scripts/plot_data_curves.py`, `scripts/plot_bar_ablation.py`, `scripts/gen_architecture_diagram.py` | Figures (shared style in `scripts/pubstyle.py`) |
+| `scripts/plot_data_curves.py`, `scripts/plot_bar_ablation.py`, `scripts/gen_architecture_diagram.py`, `scripts/compose_examples.py` | Figures (shared style in `scripts/pubstyle.py`) |
 | `scripts/check_figure.py` | Figure PDF width, fonts and vector checks |
 | `scripts/layout_check.py` (uses `scripts/floatcheck.sty`, `scripts/check_layout.py`) | Float placement build, check and baseline compare |
 | `scripts/check_bib.py` | Bibliography checks |
 | `scripts/domain_adapter.py`, `scripts/self_evolve.py` | Domain profile; sentence mining |
 | `scripts/validate_skill.py` | Maintainers: validate this skill's packaging |
 | `references/lint_rules.md` | Every checker code, with its fix |
+| `references/venues.json` | Venue profiles: widths, caption case, required sections, page limits, class files |
 | `references/domains/` | Standardized per-domain templates (skeleton, mandatory elements, evaluation protocol, rejection risks, provisional rules) |
 | `references/case_lessons_ieee_sp.md`, `references/case_lessons_ieee_tcc.md` | Worked lessons from two real submissions |

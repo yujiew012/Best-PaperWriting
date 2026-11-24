@@ -4,7 +4,7 @@
 
 ## 2.6 Evaluation（实验与评估：拒绝报菜名，重分析与强归因）
 
-这是绝大多数传统论文或低质 AI 生成稿件最容易翻车的重灾区。**审稿人自己会看表格里的数字，不需要作者在正文里机械地把表里的每一个单元格复述一遍（即“报菜名”）**。顶级论文的实验写作核心是：**挑代表性数据为佐证，重深层机理分析，强行将实证现象映射回自研方法的具体组件！**
+这是绝大多数传统论文或低质 AI 生成稿件最容易翻车的重灾区。**审稿人自己会看表格里的数字，不需要作者在正文里机械地把表里的每一个单元格复述一遍（即“报菜名”）**。顶级论文的实验写作核心是：**挑代表性数据为佐证，重深层机理分析，把实证现象归因到有证据支持的机制；措辞的强度必须与证据的强度一致（见下方“归因证据阶梯”）。**
 
 ### 2.6.1 宏观 RQ 驱动与 Setup 四大块
 - **RQ 统摄**：实验开篇必须显明列出 `RQ1–RQ5`，后续各小节直接对应（如 "§5.2 RQ1: Adaptability under Dynamic Drift"）。
@@ -32,13 +32,28 @@
 |    56.34%, and 53.59% on CIFAR-100, outperforming sub-optimal baselines  |
 |    by 2.35%-5.18%, while maintaining over 95% on simpler datasets.")     |
 |                                                                          |
-| 3. 末句 (Mechanism Mapping / 强行归因到自研方法组件):                    |
-|    深度解释为什么会有这一结果，必须点名映射到自研方法的特定机制或数学算子  |
+| 3. 末句 (Mechanism Mapping / 归因到机制，措辞匹配证据强度):              |
+|    解释为什么会有这一结果，点名具体组件或机制，并引用支持它的证据；      |
+|    没有消融/对照证据时，只能写成假设（见下方“归因证据阶梯”）            |
 |    (例: "Analysis suggests that DDAP is capable of rapid optimization,   |
 |    providing accurate prompts for local models, while PKM effectively    |
 |    suppresses catastrophic feature overwriting.")                        |
 +--------------------------------------------------------------------------+
 ```
+
+#### 归因证据阶梯（Attribution Evidence Ladder，MUST）
+
+末句的归因措辞必须与手头证据的强度一致；**NEVER** 把事后解释写成“已证实的预测”。
+
+| 证据 | 允许的措辞 | 示例 |
+| :--- | :--- | :--- |
+| **因果证据**：消融（去掉该组件后差距消失）、对推定原因的受控干预 | *is caused by*, *stems from*, *removing X eliminates* | *"Removing PKM erases 80% of the gap (Table 5), so the gain stems from its cross-round constraint."* |
+| **相关证据**：探针、相关性、案例、可视化 | *is consistent with*, *suggests*, *coincides with* | *"The delayed emergence of safety features in the probes is consistent with this explanation."* |
+| **无直接证据** | *we hypothesize that ...*，并说明如何检验；或干脆不写 | *"We hypothesize that ...; testing this requires ..."* |
+
+- **NEVER** 使用 *proves / conclusively / confirms that / undoubtedly / definitively* 描述实验结论（`lint_paper.py` W305）；“证明”只用于形式化定理。
+- 一条解释若在结果出来之后才提出，就不能称为“预测”；称为预测的，实验设计必须先于结果写明。
+- 不支持假设的结果与支持它的结果同样要写出。
 
 ---
 
@@ -87,4 +102,4 @@
 ✅ **Good（总—分—归因）**
 > *FedPE consistently outperforms all baselines under dynamic distributions, and its advantage widens as the task becomes harder. On CIFAR-100, it reaches 57.78%, 56.34%, and 53.59% across the three partitions, exceeding the second-best method by 2.35%–5.18%, while all methods stay above 95% on the simpler datasets. We attribute this gap to DDAP, which re-aligns local prompts to the shifted distribution within a few rounds, and to PKM, which penalizes abrupt parameter changes and thus suppresses catastrophic feature overwriting.*
 
-要点：首句给结论；只挑最难任务的 2–3 个数字与领先区间；末句点名到具体组件与机制；数字全部来自 Table 1。
+要点：首句给结论；只挑最难任务的 2–3 个数字与领先区间；末句点名到具体组件与机制——这里用 *We attribute* 是因为消融实验（Table 4）中去掉任一组件都会让差距明显缩小；若没有这类证据，末句应改为 *This is consistent with ...* 或写成假设；数字全部来自 Table 1。

@@ -26,3 +26,9 @@
 - *Causal*: "S2L decouples speech content from hardware acoustics using a physics-constrained forward simulator."
 
 ---
+
+### [Evolution run 20261124-015551 — 2026-11-24 06:11:50]
+- Paper `d1fb80825a` (llm_agent_security): score 4.12 -> 4.31 over 3 iteration(s)
+- Rules touched: R-0001 (provisional), R-0002 (provisional), R-0003 (candidate), R-0004 (candidate), R-0005 (candidate), R-0006 (candidate), R-0007 (candidate), R-0008 (candidate), R-0009 (candidate), R-0010 (candidate), R-0011 (candidate)
+
+---

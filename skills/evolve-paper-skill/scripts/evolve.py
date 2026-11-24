@@ -401,6 +401,7 @@ def cmd_task(a):
             os.makedirs(os.path.join(ws, "draft"))
             mat = jload(os.path.join(cache, "materials.json"))
             mat.pop("source_meta", None)          # title/authors/venue details never reach the writer
+            mat.pop("terms", None)                # guard list may contain the title or repo name
             jsave(os.path.join(ws, "materials.json"), mat)
             snapshot(run["skill_dir"], os.path.join(ws, "skill"))
             os.remove(os.path.join(ws, "skill", "evolution_ledger.json")) if os.path.exists(
