@@ -38,7 +38,8 @@
           "valid": true,
           "role": "train"
         }
-      ]
+      ],
+      "figure_domain": "llm_agent_security"
     }
   },
   "rules": [
