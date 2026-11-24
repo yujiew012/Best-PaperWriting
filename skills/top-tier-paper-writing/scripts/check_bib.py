@@ -9,12 +9,14 @@
   B002  key cited in the paper but missing from the .bib                   error
   B003  required field missing for the entry type                          error
   B004  "et al." typed into the author field (use "and others" instead)    error
+  B005  placeholder entry (TODO / FIXME / XXX / TBD / ?? in a field or key) error
   B101  duplicate title under different keys                               warning
   B102  year is not a 4-digit number                                       warning
   B103  acronym / CamelCase word in title not protected by braces          warning
         (BibTeX styles lowercase it: "FedAvg" -> "Fedavg")
   B104  arXiv / CoRR preprint: check whether a peer-reviewed version exists warning
   B105  entry never cited (only with --aux or --tex)                       info
+  B106  @misc entry without url / doi / eprint / howpublished (unlocatable) warning
 
     uv run check_bib.py refs.bib
     uv run check_bib.py refs.bib --aux build/main.aux      # cited keys from the compiled .aux
@@ -175,6 +177,12 @@ def main(argv=None):
             alt = {"journal": "journaltitle", "year": "date"}.get(req)
             if not fields.get(req, "").strip() and not (alt and fields.get(alt, "").strip()):
                 add("B003", where, f"@{etype} is missing '{req}'")
+        placeholder = re.compile(r"\b(?:TODO|FIXME|XXX|TBD|PLACEHOLDER)\b|\?\?")
+        hits = [k for k, v in fields.items() if placeholder.search(v)] + (["key"] if placeholder.search(key) else [])
+        if hits:
+            add("B005", where, f"placeholder text in {', '.join(hits)}: replace with the verified reference")
+        if etype == "misc" and not any(fields.get(k, "").strip() for k in ("url", "doi", "eprint", "howpublished")):
+            add("B106", where, "@misc without url/doi/eprint/howpublished: a reader cannot locate this source")
         author = fields.get("author", "")
         if re.search(r"\bet\s*al\.?", author, re.I):
             add("B004", where, "author field contains 'et al.'; list all authors (the style abbreviates)")

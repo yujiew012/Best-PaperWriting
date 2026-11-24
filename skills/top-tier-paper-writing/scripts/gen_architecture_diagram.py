@@ -22,8 +22,10 @@ badge (1-9) at the middle of the arrow. `*_side` in {left,right,top,bottom}
 pins the attachment side; `offset` shifts the arrow perpendicular to itself
 (use +/-0.25 for a pair of up/down-link arrows).
 
-Validation (exit 2): unknown block ids, duplicate block ids, duplicate steps.
-Warnings: overlapping blocks, labels wider than their box, gaps in step numbers.
+Exit 2: invalid spec (unknown or duplicate block ids, duplicate steps).
+Exit 1: layout issues -- overlapping blocks or texts (labels, badges, block and group
+titles), text wider than its block or group, text beyond the canvas, arrows too
+short, a canvas aspect that stretches the boxes. The figure is still written.
 """
 import argparse
 import json
@@ -50,6 +52,8 @@ GROUP_ROLES = {
 
 
 def validate(spec):
+    """Hard errors exit 2; layout problems are returned as a list of issue strings."""
+    issues = []
     blocks = spec.get("blocks", [])
     ids = [b.get("id") for b in blocks]
     dup = {i for i in ids if ids.count(i) > 1}
@@ -71,12 +75,13 @@ def validate(spec):
     if len(steps) != len(set(steps)):
         fail(f"duplicate step numbers: {sorted(steps)}")
     if steps and sorted(steps) != list(range(1, len(steps) + 1)):
-        print(f"[warn] steps are not 1..{len(steps)} without gaps: {sorted(steps)}", file=sys.stderr)
+        issues.append(f"steps are not 1..{len(steps)} without gaps: {sorted(steps)}")
     for i, a in enumerate(blocks):
         for b in blocks[i + 1:]:
             if (a["x"] < b["x"] + b["w"] and b["x"] < a["x"] + a["w"]
                     and a["y"] < b["y"] + b["h"] and b["y"] < a["y"] + a["h"]):
-                print(f"[warn] blocks overlap: {a['id']} and {b['id']}", file=sys.stderr)
+                issues.append(f"blocks overlap: {a['id']} and {b['id']}")
+    return issues
 
 
 def anchor(b, toward, side=None):
@@ -110,26 +115,34 @@ def main(argv=None):
             spec = json.load(f)
     except json.JSONDecodeError as e:
         fail(f"{path}: invalid JSON ({e})")
-    validate(spec)
+    issues = validate(spec)
 
     import matplotlib.pyplot as plt
     from matplotlib import patches
-    apply_style(spec.get("layout", "double"), spec.get("height", 2.6))
+    from matplotlib.transforms import Bbox
+    fw, fh = apply_style(spec.get("layout", "double"), spec.get("height", 2.6))
     plt.rcParams["axes.grid"] = False
-    fig, ax = plt.subplots()
+    plt.rcParams["figure.constrained_layout.use"] = False   # a diagram owns the whole figure
+    fig = plt.figure()
+    ax = fig.add_axes([0, 0, 1, 1])
     cw, ch = spec.get("canvas", [10, 4])
     ax.set_xlim(0, cw)
     ax.set_ylim(0, ch)
     ax.set_aspect("auto")
     ax.axis("off")
+    stretch = (cw / ch) / (fw / fh)
+    if not 0.85 <= stretch <= 1.18:
+        issues.append(f"canvas aspect {cw}:{ch} does not match the figure ({fw:.2f} x {fh:.2f} in): boxes are "
+                      f"stretched {stretch:.2f}x; use a canvas of about {cw}:{cw * fh / fw:.1f}")
 
+    group_titles = []
     for g in spec.get("groups", []):
         fill, edge = GROUP_ROLES.get(g.get("role", "neutral"), GROUP_ROLES["neutral"])
         ax.add_patch(patches.FancyBboxPatch((g["x"], g["y"]), g["w"], g["h"], boxstyle="round,pad=0.05",
                                             facecolor=fill, edgecolor=edge, linestyle="--", linewidth=1.0,
                                             zorder=0))
-        ax.text(g["x"] + 0.12, g["y"] + g["h"] - 0.12, g.get("label", ""), ha="left", va="top",
-                fontsize=8, fontweight="bold", color=edge, zorder=1)
+        group_titles.append((g, ax.text(g["x"] + 0.12, g["y"] + g["h"] - 0.12, g.get("label", ""), ha="left",
+                                        va="top", fontsize=8, fontweight="bold", color=edge, zorder=1)))
 
     blocks = {b["id"]: b for b in spec["blocks"]}
     texts = []
@@ -168,50 +181,74 @@ def main(argv=None):
                                     shrinkA=1, shrinkB=1))
         mx, my = (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2
         if norm < 0.35:
-            print(f"[warn] edge {e['from']}->{e['to']} is only {norm:.2f} units long; "
-                  f"move the blocks apart so the arrow and its badge are visible", file=sys.stderr)
+            issues.append(f"edge {e['from']}->{e['to']} is only {norm:.2f} units long; move the blocks apart "
+                          f"so the arrow and its badge are visible")
         if e.get("label"):
             # put the label on the side of the normal that points up (or right), clear of the badge
             sgn = 1 if (ny > 1e-9 or (abs(ny) <= 1e-9 and nx > 0)) else -1
             if off < 0:
                 sgn = -sgn
             dist = 0.36 if "step" in e else 0.18
-            lt = ax.text(mx + nx * dist * sgn, my + ny * dist * sgn, e["label"], ha="center", va="center",
-                         fontsize=6.8, color="#333333", zorder=5,
-                         bbox=dict(facecolor="white", edgecolor="none", pad=0.4, alpha=0.85))
-            labels.append(lt)
+            labels.append(ax.text(mx + nx * dist * sgn, my + ny * dist * sgn, e["label"], ha="center",
+                                  va="center", fontsize=6.8, color="#333333", zorder=5,
+                                  bbox=dict(facecolor="white", edgecolor="none", pad=0.4, alpha=0.85)))
         if "step" in e:
-            ax.add_patch(patches.Circle((mx, my), 0.14, transform=ax.transData, facecolor="#D55E00",
-                                        edgecolor="black", linewidth=0.6, zorder=10))
+            # marker size is in points, so the badge stays a circle whatever the canvas aspect
+            ax.plot([mx], [my], marker="o", markersize=11, markerfacecolor="#D55E00", markeredgecolor="black",
+                    markeredgewidth=0.6, linestyle="none", zorder=10)
             badges.append(ax.text(mx, my, str(e["step"]), ha="center", va="center", color="white",
                                   fontsize=7, fontweight="bold", zorder=11,
                                   bbox=dict(boxstyle="circle,pad=0.25", facecolor="none", edgecolor="none")))
 
-    # Warn about labels that do not fit their box (measured with the real renderer).
+    # ---- geometric checks with the real renderer -------------------------------------------
     fig.canvas.draw()
     inv = ax.transData.inverted()
-    for b, t in texts:
+
+    def width_in_data(t):
         bb = t.get_window_extent()
         (x0, _), (x1, _) = inv.transform([[bb.x0, bb.y0], [bb.x1, bb.y1]])
-        if x1 - x0 > b["w"] * 0.98:
-            print(f"[warn] text '{t.get_text()}' is wider than block '{b['id']}' "
-                  f"({x1 - x0:.2f} > {b['w']:.2f}); widen the block or shorten the text", file=sys.stderr)
-    # Warn about any edge label / badge overlapping another text element.
-    items = [(f"label '{t.get_text()}'", t) for t in labels] + \
-            [(f"badge {t.get_text()}", t) for t in badges] + \
-            [(f"block text '{t.get_text()}'", t) for _, t in texts]
-    ext = [(name, t.get_window_extent().expanded(1.02, 1.05)) for name, t in items]
-    seen = set()
+        return x1 - x0
+
+    for b, t in texts:
+        if width_in_data(t) > b["w"] * 0.98:
+            issues.append(f"text '{t.get_text()}' is wider than block '{b['id']}' "
+                          f"({width_in_data(t):.2f} > {b['w']:.2f}); widen the block or shorten the text")
+    for g, t in group_titles:
+        if width_in_data(t) > g["w"] - 0.2:
+            issues.append(f"group title '{t.get_text()}' is wider than its group "
+                          f"({width_in_data(t):.2f} > {g['w'] - 0.2:.2f}); shorten it or widen the group")
+    canvas = ax.get_window_extent()
+    every = ([(f"group title '{t.get_text()}'", t) for _, t in group_titles]
+             + [(f"label '{t.get_text()}'", t) for t in labels]
+             + [(f"badge {t.get_text()}", t) for t in badges]
+             + [(f"block text '{t.get_text()}'", t) for _, t in texts])
+    ext = [(name, t.get_window_extent().expanded(1.02, 1.05)) for name, t in every]
+    for name, bb in ext:
+        if bb.x0 < canvas.x0 - 1 or bb.x1 > canvas.x1 + 1 or bb.y0 < canvas.y0 - 1 or bb.y1 > canvas.y1 + 1:
+            issues.append(f"{name} extends beyond the canvas")
     for i, (n1, b1) in enumerate(ext):
         for n2, b2 in ext[i + 1:]:
             if n1.startswith("block") and n2.startswith("block"):
                 continue
-            if b1.overlaps(b2) and (n1, n2) not in seen:
-                seen.add((n1, n2))
-                print(f"[warn] {n1} overlaps {n2}; adjust positions or the edge 'offset'", file=sys.stderr)
+            if b1.overlaps(b2):
+                issues.append(f"{n1} overlaps {n2}")
+    # group titles must not run into block boxes
+    for g, t in group_titles:
+        tb = t.get_window_extent()
+        for b in spec["blocks"]:
+            (x0, y0), (x1, y1) = ax.transData.transform([[b["x"], b["y"]], [b["x"] + b["w"], b["y"] + b["h"]]])
+            if tb.overlaps(Bbox([[x0, y0], [x1, y1]])):
+                issues.append(f"group title '{t.get_text()}' overlaps block '{b['id']}'")
+
+    for msg in dict.fromkeys(issues):
+        print(f"[issue] {msg}", file=sys.stderr)
     if args.demo:
         print("[warn] DEMO spec -- never use this figure in a paper", file=sys.stderr)
     save_figure(fig, args.out)
+    if issues:
+        print(f"{len(set(issues))} layout issue(s): fix the spec and regenerate (the figure was still written "
+              f"for inspection)", file=sys.stderr)
+        return 1
     return 0
 
 

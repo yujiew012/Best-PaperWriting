@@ -167,7 +167,9 @@ def check_floats(geom: Geometry, floats: Dict[str, FloatInfo], refs: Dict[str, L
                 fl.messages.append(
                     f"R2: defined on p.{fl.defpos.page}, so it cannot appear before "
                     f"p.{earliest} (physical), but is first referenced on p.{r.page}; "
-                    f"move \\begin{{{fl.ftype}*}} at least one page before the reference")
+                    f"move \\begin{{{fl.ftype}*}} at least one page before the reference"
+                    + (f"; NOTE: a full-width {fl.ftype}* can never appear on page 1 -- use a column-width "
+                       f"{fl.ftype} for a page-1 teaser, or cite it first on page 2" if r.phys == 1 else ""))
             elif f.phys > earliest and f.phys > r.phys:
                 fl.messages.append(
                     f"deferred to p.{f.page} although p.{earliest} was possible "

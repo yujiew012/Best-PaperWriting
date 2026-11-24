@@ -82,7 +82,8 @@ def load(path, seen=None):
     with open(path, encoding="utf-8", errors="replace") as f:
         for no, line in enumerate(f, 1):
             line = strip_comment(line.rstrip("\n"))
-            m = re.search(r"\\(?:input|include|subfile)\{([^}]+)\}", line)
+            m = (re.search(r"\\(?:input|include|subfile|@@input|InputIfFileExists)\{([^}]+)\}", line)
+                 or re.search(r"\\(?:input|@@input)\s+([\w./-]+\.tex)\b", line))
             if m:
                 inc = os.path.join(base, m.group(1).strip())
                 if not inc.endswith(".tex"):
@@ -245,13 +246,20 @@ def run(main_tex, caption_style, num_threshold, disabled):
     # paragraphs that dump numbers (outside floats / tabulars / math displays)
     stripped = re.sub(r"\\begin\{(" + env_re + r"|tabular\*?|table|equation\*?|align\*?)\}.*?\\end\{\1\}",
                       lambda mm: " " * len(mm.group(0)), body, flags=re.S)
-    pos = 0
-    for para in re.split(r"\n\s*\n", stripped):
-        nums = re.findall(r"(?<![\w.])\d+(?:\.\d+)?\s*(?:\\%|%|pp|×|x\b)|(?<![\w.])\d+\.\d+", para)
+    # real paragraph spans (blank-line separated), so reported lines never drift
+    for pm in re.finditer(r"(?:[^\n]|\n(?!\s*\n))+", stripped):
+        para = pm.group(0)
+        if not para.strip():
+            continue
+        # a reported number: a decimal or a percentage/pp/x value that is not part of an
+        # identifier such as GPT-4.1, Seed-1.6, 4.5V or 235B
+        nums = [m.group(0) for m in re.finditer(
+            r"(?<![\w.\-])\d+(?:\.\d+)?(?![\w.])(?:\s*(?:\\%|%|pp\b|×|x\b))?", para)
+            if "." in m.group(0) or re.search(r"%|pp|×|x$", m.group(0))]
         if len(nums) >= num_threshold:
-            add("W303", body_start + pos + (len(para) - len(para.lstrip())),
+            lead = len(para) - len(para.lstrip())
+            add("W303", body_start + pm.start() + lead,
                 f"paragraph quotes {len(nums)} numbers; keep 1-3 key numbers and let the table carry the rest")
-        pos += len(para) + 2
 
     # abstract / conclusion length
     m = re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}", text, re.S)
