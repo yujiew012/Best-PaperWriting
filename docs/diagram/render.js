@@ -1,5 +1,5 @@
 // Render docs/images/workflow.svg to a high-resolution PNG and verify the layout geometrically.
-//   node docs/diagram/render.js [scale]      (default scale 3 -> 4800 px wide)
+//   node docs/diagram/render.js [scale]      (default scale 3 -> 5700 px wide)
 // Exit code 1 if any check fails: text outside its box, overlapping boxes or labels,
 // arrows crossing boxes, labels or other arrows, or anything outside the canvas.
 const { chromium } = require('playwright');
@@ -12,7 +12,7 @@ const path = require('path');
   const pngPath = path.join(__dirname, '..', 'images', 'workflow.png');
   const svg = fs.readFileSync(svgPath, 'utf8');
   const browser = await chromium.launch();
-  const page = await browser.newPage({ deviceScaleFactor: scale, viewport: { width: 1700, height: 1300 } });
+  const page = await browser.newPage({ deviceScaleFactor: scale, viewport: { width: 2000, height: 1500 } });
   await page.setContent(`<!doctype html><html><body style="margin:0;background:#fff">${svg}</body></html>`);
   await page.evaluate(() => document.fonts.ready);
 
@@ -34,10 +34,10 @@ const path = require('path');
     const ancestors = el => { const a = []; let c = el; while (c && c.dataset.in) { c = byId(c.dataset.in); if (c) a.push(c); } return a; };
     const related = (a, b) => ancestors(a).includes(b) || ancestors(b).includes(a);
 
-    // 1. canvas bounds
+    // 1. content margin: everything stays inside the 60 px margin used by the layout (2 px tolerance)
     for (const e of [...boxes, ...texts]) {
       const b = box(e);
-      if (b.x < 8 || b.y < 8 || b.x2 > vb.width - 8 || b.y2 > vb.height - 8) out.push(`outside canvas: ${name(e)}`);
+      if (b.x < 58 || b.y < 32 || b.x2 > vb.width - 58 || b.y2 > vb.height - 24) out.push(`outside the margin: ${name(e)}`);
     }
     // 2. text inside its container (with padding)
     for (const t of texts) {
@@ -79,6 +79,11 @@ const path = require('path');
     for (let i = 0; i < arrows.length; i++) for (let j = i + 1; j < arrows.length; j++) {
       const A = samples(arrows[i]), B = samples(arrows[j]);
       if (A.some(p => B.some(q => Math.hypot(p.x - q.x, p.y - q.y) < 2.5))) out.push(`arrows touch: ${name(arrows[i])} / ${name(arrows[j])}`);
+    }
+    // 7b. divider rules vs text and boxes
+    for (const l of all.filter(e => e.dataset.kind === 'rule')) {
+      const lb = box(l), band = { ...lb, y: lb.y - 3, y2: lb.y2 + 3 };
+      for (const t of [...texts, ...boxes]) if (inter(band, box(t))) out.push(`divider crosses: ${name(t)}`);
     }
     // 7. barrier lines vs text
     for (const l of barriers) { const lb = box(l); for (const t of texts) if (inter({ ...lb, x: lb.x - 1, x2: lb.x2 + 1 }, box(t))) out.push(`barrier crosses text: ${name(t)}`); }

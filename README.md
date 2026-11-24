@@ -1,10 +1,211 @@
-# Best-PaperWriting：计算机顶会/顶刊论文写作与学术绘图 Agent Skill
+# Best-PaperWriting
+
+**An Agent Skill for top-tier CS paper writing and academic figures**<br>
+**计算机顶会/顶刊论文写作与学术绘图 Agent Skill**
 
 [![Skill: top-tier-paper-writing](https://img.shields.io/badge/Agent%20Skill-top--tier--paper--writing-blueviolet.svg)](skills/top-tier-paper-writing/SKILL.md)
 [![Format: Agent Skills](https://img.shields.io/badge/Format-Agent%20Skills%20(SKILL.md)-blue.svg)](https://agentskills.io/specification)
 [![Agents: Claude Code | Codex | Antigravity](https://img.shields.io/badge/Agents-Claude%20Code%20%7C%20Codex%20%7C%20Antigravity-brightgreen.svg)]()
 
-**中文** | [English](README_EN.md)
+**[English](#english)** · **[中文](#中文)**
+
+<p align="center">
+  <img src="docs/images/workflow.png" alt="Workflow: (1) writing with a deterministic SOP and (2) self-evolution with Extractor, Writer and Reviewer sub-agents, both around one shared skill core" width="100%">
+</p>
+
+---
+
+## English
+
+`top-tier-paper-writing` is a general-purpose **Agent Skill**: a folder containing `SKILL.md`, scripts and reference material in the open Agent Skills format. **Claude Code, OpenAI Codex and Google Antigravity (app and CLI)** can load it directly.
+
+Written from the perspective of a senior PhD researcher and reviewer with several top-tier publications, it covers the whole life cycle of a computer-science paper for CCF-A conferences and IEEE/ACM Transactions:
+
+1. **Domain templates.** Identify the paper's area (security & privacy, LLM/agent security, federated learning algorithms, systems, NLP/LLM) and apply that area's standardized template: paper skeleton, mandatory elements, evaluation protocol.
+2. **Academic figures.** Modern-minimal architecture diagrams with numbered steps ①–⑥, and data plots with the colorblind-safe Okabe-Ito palette at exact single- or double-column widths (3.4 / 6.9 in).
+3. **Captions.** Sentence case for figures and Title Case for tables; captions describe, they never conclude.
+4. **Prose.** Introductions built on paired challenges, real-world cases and insights; results paragraphs as claim → evidence → mechanism, never reading the table aloud.
+5. **Two-column layout.** Three rules for float placement, checked automatically with `floatcheck.sty` + `check_layout.py`.
+6. **Self-evolution.** The companion `evolve-paper-skill` improves the skill from exemplar papers with three sub-agents (Extractor → Writer → Reviewer); an evidence ledger prevents overfitting.
+7. **Revision and submission.** Backward-consistency pass after new experiments, multi-source bibliography verification, arXiv versions and journal extensions.
+
+See [`skills/top-tier-paper-writing/SKILL.md`](skills/top-tier-paper-writing/SKILL.md) for the full procedure and [`skills/evolve-paper-skill/SKILL.md`](skills/evolve-paper-skill/SKILL.md) for the evolution loop.
+
+### 1. Installation
+
+The repository contains two skills, each kept in a single source folder: `skills/top-tier-paper-writing/` (writing papers) and `skills/evolve-paper-skill/` (evolving the former from exemplar papers; for maintainers). The installer **links** (default) or **copies** them into each agent's skills directory. Use `--skill <name>` to install only one.
+
+```bash
+git clone https://github.com/yujiew012/Best-PaperWriting.git
+cd Best-PaperWriting
+python3 install.py                       # all supported agents, user level
+python3 -m pip install -r skills/top-tier-paper-writing/requirements.txt
+```
+
+Restart the agent afterwards so it rescans its skills. Common options:
+
+```bash
+python3 install.py --agent claude codex          # only some agents
+python3 install.py --project /path/to/paper-repo # inside one paper project (can be committed with it)
+python3 install.py --copy                        # copy instead of link (e.g. Windows without symlinks)
+python3 install.py --dest /any/skills/dir        # any other skills directory
+python3 install.py --status                      # show what is installed where
+python3 install.py --uninstall                   # remove only what this script installed
+```
+
+| Agent | User level (default) | Project level (`--project`) |
+| :--- | :--- | :--- |
+| Claude Code | `~/.claude/skills/` | `.claude/skills/` |
+| OpenAI Codex | `~/.agents/skills/` (older versions read `~/.codex/skills/`; use `--dest`) | `.agents/skills/` |
+| Google Antigravity app | `~/.gemini/antigravity/skills/` | `.agents/skills/` |
+| Google Antigravity CLI | `~/.gemini/antigravity-cli/skills/` | `.agents/skills/` |
+
+- Symlinks are the default, so every agent shares the same files and `git pull` updates them all. With `--copy`, rerun the installer after updating.
+- Directory conventions still change between versions. If yours reads another location, use `--dest`. Confirm the installation inside the agent: `/skills` in Claude Code and Codex, or the Customizations panel in Antigravity.
+- **Agents without skill support** (some IDE assistants): `SKILL.md` is plain Markdown. Add a line to the project's `AGENTS.md` or rules file such as "When writing a paper, first read `<path>/top-tier-paper-writing/SKILL.md` and load its references as it instructs."
+
+#### Usage
+
+Once installed, just ask the agent for paper work, for example "rewrite the introduction of this paper", "turn this results table into an analysis paragraph" or "check the float placement in main.tex". The agent loads the skill from its description. You can also invoke it explicitly: `/top-tier-paper-writing` in Claude Code, `$top-tier-paper-writing` in Codex.
+
+### 2. Design
+
+The skill is an executable SOP, loaded in three layers to keep the agent's context small:
+
+| Layer | Content | Loaded |
+| :--- | :--- | :--- |
+| 1. Index | `SKILL.md` frontmatter: when to use it, and **when not to** | Always (about 540 characters) |
+| 2. SOP | `SKILL.md` body: ground rules, human approval gates, routing table, 9 branches (Read → Do → Verify), failure recovery, Definition of Done | When the skill triggers |
+| 3. Resources | `references/` (per-section writing rules, figure / layout / bibliography rules, checker codes) and `assets/` (templates, example data) | When a branch needs them |
+
+**Deterministic work goes to scripts.** Statistics, figure sizes, float positions, labels and references, and bibliography fields are computed and checked by scripts. The model interprets the request, chooses the branch, writes and synthesizes. Every branch ends with a script check as its completion criterion. On failure the agent fixes the issue using `references/lint_rules.md` and reruns the check, at most 3 times per issue, then reports to the user.
+
+**Safety boundaries.** The agent asks before replacing several existing paragraphs, deleting sections, figures or bibliography entries, installing software, or writing to the sentence bank. For submissions, uploads and emails it only prepares the material and never acts on the user's behalf.
+
+### 3. Directory Layout
+
+```
+skills/top-tier-paper-writing/
+├── SKILL.md                      # trigger description + concise SOP + Definition of Done
+├── requirements.txt              # dependencies when not using uv (matplotlib, numpy)
+├── EVOLUTION_LOG.md              # evolution history
+├── evolution_ledger.json         # rule evidence ledger (maintained by evolve.py; never edit by hand)
+├── scripts/                      # deterministic scripts (all with PEP 723 headers, runnable via `uv run`)
+│   ├── check_env.py              # environment readiness (plot / layout / bib / lint / network)
+│   ├── lint_paper.py             # static .tex checks: labels/refs, caption case and conclusions, \vspace, vague wording, number dumping, abstract/conclusion length
+│   ├── result_stats.py           # margins, ranks, ranges, drop rates and "not best" settings from result CSVs
+│   ├── plot_data_curves.py       # multi-seed curves (mean ± std, sensitivity optimum, two-phase split)
+│   ├── plot_bar_ablation.py      # grouped bars (error bars, difference to the full model)
+│   ├── gen_architecture_diagram.py  # architecture diagram from a JSON spec (numbered steps, overlap warnings)
+│   ├── pubstyle.py               # shared plot style (sizes, fonts, Okabe-Ito palette)
+│   ├── check_figure.py           # figure PDF checks: width, Type 3 fonts, vector output
+│   ├── layout_check.py           # one command: diagnostic build + float checks + baseline compare
+│   ├── check_layout.py, floatcheck.sty  # float position recording and analysis
+│   ├── check_bib.py              # .bib checks: duplicates, missing fields, unbraced acronyms, preprints, missing citations
+│   ├── domain_adapter.py         # domain detection and domain profile
+│   ├── self_evolve.py            # candidate sentences from exemplar papers (preview; --apply after review)
+│   └── validate_skill.py         # maintainers: validate the skill's packaging
+├── references/
+│   ├── writing/                  # per section: principles & style, abstract/intro, related work/preliminaries, method/theory, evaluation, discussion/conclusion/ethics
+│   ├── domains/                  # standardized domain templates (same 8 sections): security_privacy, llm_agent_security, machine_learning_fl, distributed_systems, nlp_llm
+│   ├── figures_and_captions.md   # architecture diagrams, data plots, tables, captions, with good/bad examples
+│   ├── layout_and_typesetting.md # the three float rules, measurement workflow, repair ladder
+│   ├── bibliography.md           # multi-source bibliography verification
+│   ├── revision_and_submission.md# backward consistency, arXiv versions, journal extensions
+│   ├── domain_and_sentence_mining.md
+│   ├── lint_rules.md             # every checker code, its meaning and its fix
+│   ├── mechanism_sentence_bank.md, domain_taxonomies.json
+│   └── case_lessons_ieee_sp.md, case_lessons_ieee_tcc.md  # lessons from two real submissions
+└── assets/
+    ├── prompt_templates.md       # prompts: "results table → analysis prose", "architecture diagram design"
+    └── curves_example.csv, ablation_example.csv, architecture_example.json  # input format examples (never for papers)
+skills/evolve-paper-skill/          # for maintainers: evolves the skill above from exemplar papers
+├── SKILL.md                      # orchestrator SOP: iteration loop, sub-agents, approval gates, Definition of Done
+├── scripts/evolve.py             # deterministic orchestration: isolated workspaces, validation, leakage checks, scoring, keep/revert, ledger, anti-overfitting guards
+├── assets/agents/                # role task templates: extractor.md, writer.md, reviewer.md
+├── assets/schemas/               # contracts for materials.json and review.json
+└── references/                   # anti_overfitting.md (rule admission ladder), review_rubric.md (8 scoring dimensions)
+docs/
+├── images/                       # workflow diagram, sponsor codes
+└── diagram/                      # code that generates and checks the workflow diagram
+```
+
+### 4. Self-Evolution: Improving the Skill from Top-Tier Papers
+
+Give the main agent one or more published top-tier papers. Following the `evolve-paper-skill` SOP, it runs three sub-agents for the number of iterations you choose:
+
+```
+            exemplar PDF / Markdown
+                   │
+        ┌──────────▼──────────┐   outputs structured facts only (idea, method, data, the paper's own names);
+        │ ① Extractor          │   copied sentences are detected and rejected (> 16 words)
+        └──────────┬──────────┘
+          materials.json (title, authors, venue removed)
+        ┌──────────▼──────────┐   never sees the paper: its workspace holds only the materials and the
+        │ ② Writer             │   current skill; drafts the whole paper + a "skill friction" report
+        └──────────┬──────────┘
+             draft/main.tex
+        ┌──────────▼──────────┐   original = gold standard: 8 scores + a list of gaps, each tagged with
+        │ ③ Reviewer           │   a root cause (missing / vague / wrong rule, not followed, …) and a scope
+        └──────────┬──────────┘
+              review.json
+        ┌──────────▼──────────┐   generalize → evolve.py propose (overfitting guard) → edit the skill
+        │   Main agent         │   → evolve.py check-edits → next iteration; a score drop reverts automatically
+        └─────────────────────┘
+```
+
+**Preventing overfitting is the core of the design.** The skill accumulates transferable conventions and never memorizes a specific paper:
+
+| Mechanism | How it works |
+| :--- | :--- |
+| Domain templates | Knowledge goes into the fixed 8-section structure of `references/domains/<domain>.md`: skeleton, mandatory elements, evaluation protocol, figures, narrative patterns, common rejection reasons, provisional rules. |
+| Evidence ladder | One paper can only add a provisional rule to §8 of its domain template. A second paper from the same domain makes it established. Universal rules (`SKILL.md`, `writing/`) need **at least 2 papers from at least 2 domains**. |
+| Evidence ledger | `evolution_ledger.json` records each rule's scope and its supporting and contradicting evidence. Rules contradicted more often than supported are retired automatically. |
+| Deterministic guards | An edit is refused if it contains the paper's method or component names, its result values, or 8 or more consecutive words from it. At most 40 added lines per iteration and 8 provisional rules per paper. Every added rule line must carry its ledger id. |
+| Information barrier | The Writer never sees the original. A draft with too much verbatim overlap with the original is invalid. |
+| Keep the best | The skill is snapshotted every iteration. If a new draft scores below the best earlier one (tolerance 0.25), the edits are reverted and their rules rejected. |
+| Holdout check | Earlier exemplars (cached materials) confirm that new edits did not make older papers worse. |
+| Human approval | You confirm the papers and the number of iterations up front, then review `report.md` and the `git diff` to keep the changes or `revert --to-base`. |
+
+Usage: tell the agent "evolve the paper-writing skill with these papers, 3 iterations", and it loads `evolve-paper-skill` and follows the procedure. Paper text, materials and drafts stay in `.evolution/` (git-ignored) and never enter the repository.
+
+### 5. Script Quick Reference
+
+The agent calls these scripts as the SOP prescribes, but you can also run them yourself. `uv run` is recommended: it prepares an isolated environment from each script's header. Without uv, use `python3` after `pip install -r requirements.txt`.
+
+```bash
+S=skills/top-tier-paper-writing/scripts
+
+python3 $S/check_env.py                                          # environment check
+uv run $S/lint_paper.py paper/main.tex                           # static manuscript checks
+uv run $S/result_stats.py --data results.csv --ours "FedPE"      # evidence numbers before writing the analysis
+uv run $S/plot_data_curves.py --data curves.csv --ours "FedPE (Ours)" \
+    --xlabel "Communication rounds" --ylabel "Test accuracy (%)" --out fig_conv.pdf
+uv run $S/plot_bar_ablation.py --data ablation.csv --ours "Full model" --annotate-delta --out fig_abl.pdf
+uv run $S/gen_architecture_diagram.py --spec fig_arch.json --out fig_arch.pdf
+uv run $S/check_figure.py fig_*.pdf                              # width / font checks
+uv run $S/layout_check.py paper/main.tex --save-baseline before.json   # before editing
+uv run $S/layout_check.py paper/main.tex --compare before.json         # after editing: exit 1 if worse
+uv run $S/check_bib.py paper/refs.bib --tex paper/main.tex
+```
+
+All checkers use the same exit codes: 0 = pass, 1 = problems found, 2 = input or environment error. `--json` writes a machine-readable report.
+
+### 6. Maintenance
+
+- Edit only the source folders under `skills/`. With symlink installs, that is exactly what every agent reads.
+- After changes, run `python3 skills/top-tier-paper-writing/scripts/validate_skill.py`. It checks:
+  - the frontmatter: `name` equals the folder name; `description` is a single line of at most 1024 characters;
+  - every path mentioned in `SKILL.md` exists;
+  - every script has a PEP 723 header and compiles;
+  - no file in `references/` or `assets/` is unreachable from `SKILL.md`.
+- Keep `SKILL.md` to procedure, rules and the Definition of Done (under 500 lines). Put detail into `references/` and register it in the matching branch's **Read** step.
+- New deterministic checks become scripts in `scripts/` (PEP 723 header, `--json`, standard exit codes), and their codes go into `references/lint_rules.md`.
+- The workflow diagram is generated from code. After editing `docs/diagram/build_workflow.py`, run `python3 docs/diagram/build_workflow.py && node docs/diagram/render.js`. The renderer exports `docs/images/workflow.png` at 3× resolution and verifies that no text overflows and no elements overlap; it exits 1 otherwise.
+
+---
+
+## 中文
 
 `top-tier-paper-writing` 是一个通用的 **Agent Skill**：一个包含 `SKILL.md`、脚本与参考资料的文件夹，遵循开放的 Agent Skills 格式，可直接被 **Claude Code、OpenAI Codex、Google Antigravity（App 与 CLI）** 等编码 Agent 加载。
 
@@ -20,13 +221,7 @@
 
 完整规范见 [`skills/top-tier-paper-writing/SKILL.md`](skills/top-tier-paper-writing/SKILL.md)，自进化流程见 [`skills/evolve-paper-skill/SKILL.md`](skills/evolve-paper-skill/SKILL.md)。
 
-<p align="center">
-  <img src="docs/images/workflow.png" alt="工作流程：① 写作（确定性 SOP）与 ② 自进化（Extractor → Writer → Reviewer），二者共享同一个 Skill 核心" width="100%">
-</p>
-
----
-
-## 一、安装
+### 一、安装
 
 仓库包含两个 Skill，各自只有一份源文件：`skills/top-tier-paper-writing/`（写论文）与 `skills/evolve-paper-skill/`（用范文进化前者，维护者使用）。安装脚本把它们**链接**（默认）或**复制**到各 Agent 读取 Skill 的目录（`--skill <name>` 只装其中一个）：
 
@@ -59,13 +254,11 @@ python3 install.py --uninstall                   # 卸载（只删除本脚本�
 - 各工具的目录约定仍在变化，如果你的版本读取其他位置，用 `--dest` 指定即可；安装后可在 Agent 中确认（Claude Code 和 Codex 用 `/skills`，Antigravity 看 Customizations 面板）。
 - **其他 Agent**（不支持 Skill 的工具，如部分 IDE 助手）：`SKILL.md` 是普通 Markdown，可在项目的 `AGENTS.md` 或规则文件中写一句“写论文时先阅读 `<path>/top-tier-paper-writing/SKILL.md` 并按其中指引加载参考文件”。
 
-### 使用
+#### 使用
 
 装好后，直接让 Agent 做论文相关的事即可，例如“帮我重写这篇论文的引言”“把这张实验表格写成分析段落”“检查一下 main.tex 的浮动体位置”。Agent 会根据 Skill 描述自动加载，也可以显式调用（Claude Code 中输入 `/top-tier-paper-writing`，Codex 中输入 `$top-tier-paper-writing`）。
 
----
-
-## 二、Skill 的设计
+### 二、Skill 的设计
 
 Skill 按“可执行 SOP”组织，分三层加载，尽量少占 Agent 的上下文：
 
@@ -79,7 +272,7 @@ Skill 按“可执行 SOP”组织，分三层加载，尽量少占 Agent 的上
 
 **安全边界**：替换多段已有正文、删除章节/图表/文献条目、安装软件、写入句式库前必须征得用户同意；投稿、上传、发邮件只准备材料，不代替用户执行。
 
-## 三、目录结构
+### 三、目录结构
 
 ```
 skills/top-tier-paper-writing/
@@ -127,7 +320,7 @@ docs/
 └── diagram/                      # 生成并检查流程图的代码
 ```
 
-## 四、自进化：用顶会范文持续改进 Skill
+### 四、自进化：用顶会范文持续改进 Skill
 
 把一篇（或多篇）已发表的顶会/顶刊论文交给主 Agent，它按 `evolve-paper-skill` 的 SOP 调度三个子 Agent，迭代次数由你指定：
 
@@ -166,7 +359,7 @@ docs/
 
 使用方式：在 Agent 中说“用这几篇论文进化论文写作 Skill，迭代 3 轮”，Agent 会加载 `evolve-paper-skill` 并按流程执行。论文原文、材料与草稿只保存在 `.evolution/`（已加入 `.gitignore`），不会进入仓库。
 
-## 五、脚本速查
+### 五、脚本速查
 
 脚本既可以由 Agent 按 SOP 调用，也可以手动运行。推荐 `uv run`（按脚本头部声明自动准备隔离环境）；没有 uv 时用 `python3`，并先 `pip install -r requirements.txt`。
 
@@ -188,9 +381,7 @@ uv run $S/check_bib.py paper/refs.bib --tex paper/main.tex
 
 所有检查脚本：退出码 0 = 通过，1 = 发现问题，2 = 输入或环境错误；`--json` 输出机器可读报告。
 
----
-
-## 六、维护约定
+### 六、维护约定
 
 - 只修改 `skills/top-tier-paper-writing/` 这一份源文件；符号链接安装时，各 Agent 读取的就是它。
 - 修改后运行 `python3 skills/top-tier-paper-writing/scripts/validate_skill.py`：检查 frontmatter（`name` 与目录一致、`description` 单行且不超过 1024 字符）、`SKILL.md` 提到的路径都存在、每个脚本都有 PEP 723 头并能编译、`references/` 与 `assets/` 中没有 SKILL.md 无法到达的文件。
@@ -200,21 +391,23 @@ uv run $S/check_bib.py paper/refs.bib --tex paper/main.tex
 
 ---
 
-## 七、投喂流浪猫 🐱
+## Feed the Stray Cats · 投喂流浪猫 🐱
+
+If this skill saved you a few late nights of revisions, you can scan either code below to buy a meal for stray cats. **All sponsorship goes to cat food for stray cats.**
 
 如果这个 Skill 帮你少熬了几个改稿的夜，欢迎扫码请流浪猫吃顿饭。**所有赞助都将用于为流浪猫购买猫粮。**
 
 <div align="center">
 <table>
   <tr>
-    <td align="center" width="260"><img src="docs/images/sponsor_wechat_pay.png" alt="微信支付收款码" width="220" height="220"></td>
-    <td align="center" width="260"><img src="docs/images/sponsor_wechat_reward.png" alt="微信赞赏码" width="220" height="220"></td>
+    <td align="center" width="260"><img src="docs/images/sponsor_wechat_pay.png" alt="WeChat Pay code / 微信支付收款码" width="220" height="220"></td>
+    <td align="center" width="260"><img src="docs/images/sponsor_wechat_reward.png" alt="WeChat reward code / 微信赞赏码" width="220" height="220"></td>
   </tr>
   <tr>
-    <td align="center"><b>微信支付</b></td>
-    <td align="center"><b>微信赞赏码</b></td>
+    <td align="center"><b>WeChat Pay · 微信支付</b></td>
+    <td align="center"><b>WeChat Reward · 微信赞赏码</b></td>
   </tr>
 </table>
 </div>
 
-<p align="center">谢谢你，也替猫咪们谢谢你！</p>
+<p align="center">Thank you, from us and from the cats! · 谢谢你，也替猫咪们谢谢你！</p>
