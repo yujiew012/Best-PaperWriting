@@ -14,9 +14,237 @@
       "title": "Hard to Read, Easy to Jailbreak: How Visual Degradation Bypasses MLLM Safety Alignment",
       "venue": "arXiv preprint (cs.CV), ACL-style format",
       "year": "2026",
-      "domain": "llm_agent_security"
+      "domain": "llm_agent_security",
+      "best_score": 4.125,
+      "history": [
+        {
+          "run": "20261124-015551",
+          "iter": 1,
+          "score": 4.125,
+          "valid": true,
+          "role": "train"
+        }
+      ]
     }
   },
-  "rules": [],
+  "rules": [
+    {
+      "id": "R-0001",
+      "scope": "domain:llm_agent_security",
+      "text": "When the attack payload is a perceptual input (image, audio, rendered document), show concrete examples early: one figure with a clean and an attacked input side by side and the model's responses, plus an example of every attack variant evaluated; use benign or redacted content when the real payload is harmful. A pipeline diagram does not replace these examples.",
+      "files": [
+        "references/domains/llm_agent_security.md"
+      ],
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-015551",
+          "iter": 1,
+          "gap": "G1"
+        }
+      ],
+      "counter": [],
+      "status": "provisional",
+      "root_cause": "missing_rule",
+      "skill_location": "references/domains/llm_agent_security.md#5. Figures and tables",
+      "history": [
+        {
+          "t": "2026-11-24 02:21:46",
+          "event": "created",
+          "status": "provisional",
+          "run": "20261124-015551",
+          "iter": 1
+        }
+      ],
+      "applied": [
+        {
+          "run": "20261124-015551",
+          "paper": "d1fb80825a",
+          "iter": 1
+        }
+      ]
+    },
+    {
+      "id": "R-0002",
+      "scope": "domain:llm_agent_security",
+      "text": "When the main contribution is a newly measured vulnerability rather than a defense, use a measurement-paper skeleton: methodology and findings first, then mechanism evidence, then the explanatory hypothesis, then a short mitigation derived from it, then confounder controls; the main table crosses models with input conditions and reports a capability metric beside ASR.",
+      "files": [
+        "references/domains/llm_agent_security.md"
+      ],
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-015551",
+          "iter": 1,
+          "gap": "G5"
+        }
+      ],
+      "counter": [],
+      "status": "provisional",
+      "root_cause": "missing_rule",
+      "skill_location": "references/domains/llm_agent_security.md#2. Paper skeleton",
+      "history": [
+        {
+          "t": "2026-11-24 02:21:46",
+          "event": "created",
+          "status": "provisional",
+          "run": "20261124-015551",
+          "iter": 1
+        }
+      ],
+      "applied": [
+        {
+          "run": "20261124-015551",
+          "paper": "d1fb80825a",
+          "iter": 1
+        }
+      ]
+    },
+    {
+      "id": "R-0003",
+      "scope": "universal",
+      "text": "Every claim in a results paragraph must point to a figure, table or appendix item the reader can inspect; when evidence exists only as values read off a plot, redraw it and say so in the caption, or narrow the claim to what the shown evidence supports.",
+      "files": [
+        "references/figures_and_captions.md"
+      ],
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-015551",
+          "iter": 1,
+          "gap": "G2"
+        }
+      ],
+      "counter": [],
+      "status": "candidate",
+      "root_cause": "missing_rule",
+      "skill_location": "references/figures_and_captions.md#1. 硬性规则",
+      "history": [
+        {
+          "t": "2026-11-24 02:21:46",
+          "event": "created",
+          "status": "candidate",
+          "run": "20261124-015551",
+          "iter": 1
+        }
+      ]
+    },
+    {
+      "id": "R-0004",
+      "scope": "universal",
+      "text": "Draw error bars or bands only when they encode real uncertainty, such as variation across seeds or a confidence interval over test items; otherwise omit them, state the run count in the caption, and never draw zero-width error bars.",
+      "files": [
+        "references/figures_and_captions.md"
+      ],
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-015551",
+          "iter": 1,
+          "gap": "G3"
+        }
+      ],
+      "counter": [],
+      "status": "candidate",
+      "root_cause": "wrong_rule",
+      "skill_location": "references/figures_and_captions.md#1. 硬性规则 (rule 5)",
+      "history": [
+        {
+          "t": "2026-11-24 02:21:46",
+          "event": "created",
+          "status": "candidate",
+          "run": "20261124-015551",
+          "iter": 1
+        }
+      ]
+    },
+    {
+      "id": "R-0005",
+      "scope": "universal",
+      "text": "In figures comparing the same inputs with and without a treatment, give each input condition one hue, separate untreated from treated by shade or hatching, place the untreated bar first, and mark the change within each pair.",
+      "files": [
+        "references/figures_and_captions.md"
+      ],
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-015551",
+          "iter": 1,
+          "gap": "G4"
+        }
+      ],
+      "counter": [],
+      "status": "candidate",
+      "root_cause": "vague_rule",
+      "skill_location": "references/figures_and_captions.md#3.4 Okabe-Ito 色值; scripts/plot_bar_ablation.py",
+      "history": [
+        {
+          "t": "2026-11-24 02:21:46",
+          "event": "created",
+          "status": "candidate",
+          "run": "20261124-015551",
+          "iter": 1
+        }
+      ]
+    },
+    {
+      "id": "R-0006",
+      "scope": "universal",
+      "text": "When a result curve has qualitatively distinct regimes, name each regime once with its boundary values and defining behaviour, and reuse those names consistently in later text and figures.",
+      "files": [
+        "references/writing/evaluation.md"
+      ],
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-015551",
+          "iter": 1,
+          "gap": "G6"
+        }
+      ],
+      "counter": [],
+      "status": "candidate",
+      "root_cause": "missing_rule",
+      "skill_location": "references/writing/evaluation.md#范式 2：参数敏感性与拐点分析",
+      "history": [
+        {
+          "t": "2026-11-24 02:21:46",
+          "event": "created",
+          "status": "candidate",
+          "run": "20261124-015551",
+          "iter": 1
+        }
+      ]
+    },
+    {
+      "id": "R-0007",
+      "scope": "universal",
+      "text": "If the venue class or fonts are unavailable, estimate the page count from a fallback build matching the venue's margins, column width and font size, keep a safety margin of at least half a page, and report the estimate and method.",
+      "files": [
+        "references/layout_and_typesetting.md"
+      ],
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-015551",
+          "iter": 1,
+          "gap": "G7"
+        }
+      ],
+      "counter": [],
+      "status": "candidate",
+      "root_cause": "missing_rule",
+      "skill_location": "references/layout_and_typesetting.md#5. 每次修改后的检查",
+      "history": [
+        {
+          "t": "2026-11-24 02:21:46",
+          "event": "created",
+          "status": "candidate",
+          "run": "20261124-015551",
+          "iter": 1
+        }
+      ]
+    }
+  ],
   "runs": []
 }
