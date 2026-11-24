@@ -88,7 +88,7 @@ evolve.py init --mode figure --skill <skill> --paper paper.pdf --iterations N [-
    | :--- | :--- | :--- |
    | `missing_rule`, `vague_rule`, `wrong_rule`, `rule_not_followed` | `propose --scope domain\|universal` (universal target: `<skill>/references/figures_and_captions.md`) | A figure rule, through the same evidence ladder as writing rules |
    | `style_parameter` | `propose-style --gap G#` | The script writes a bounds-checked **provisional** value into `<skill>/references/figure_styles/<domain>.json` |
-   | `generator_limitation` | `request-feature --gap G#` | Nothing in the skill: logged for a human in the ledger and the report |
+   | `generator_limitation` | `request-feature --gap G#` | Nothing in the skill: logged for a human in the ledger and the report. After a human changes the generator, they run `resolve-feature --id F-xxxx --note "..."` |
    | `brief_missing`, `illustrator_error`, `paper_specific` | none | Mention them in the report |
 
    NEVER edit a style profile by hand: `check-edits` rejects base or provisional values without a matching ledger rule, and any change to `_bounds.json`.

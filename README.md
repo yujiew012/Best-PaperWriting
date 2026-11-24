@@ -98,7 +98,7 @@ skills/top-tier-paper-writing/
 │   ├── result_stats.py           # margins, ranks, ranges, condition changes and the exceptions to report (method or measurement papers)
 │   ├── plot_data_curves.py       # curves: mean ± std, small multiples, log/inverted axes, shaded regimes, two-phase split
 │   ├── plot_bar_ablation.py      # grouped bars; paired before/after mode; error bars only for real variation
-│   ├── gen_architecture_diagram.py  # architecture diagram from a JSON spec (numbered steps; exits 1 on any collision)
+│   ├── gen_architecture_diagram.py  # architecture diagram from a JSON spec: numbered steps, actor glyphs, plot insets, image grids; exits 1 on any collision
 │   ├── compose_examples.py       # grid of example inputs (clean vs. attacked) at the venue's width
 │   ├── pubstyle.py               # shared plot style (sizes, fonts, Okabe-Ito palette)
 │   ├── figstyle.py               # loads and bounds-checks the per-domain diagram style profiles
@@ -200,7 +200,7 @@ uv run $S/plot_data_curves.py --data curves.csv --ours "FedPE (Ours)" \
     --xlabel "Communication rounds" --ylabel "Test accuracy (%)" --out fig_conv.pdf
 uv run $S/plot_bar_ablation.py --data ablation.csv --ours "Full model" --annotate-delta --out fig_abl.pdf
 uv run $S/plot_bar_ablation.py --data defense.csv --paired "No defense" "With defense" --venue acl --out fig_def.pdf
-uv run $S/gen_architecture_diagram.py --spec fig_arch.json --out fig_arch.pdf
+uv run $S/gen_architecture_diagram.py --spec fig_arch.json --style <domain_id> --venue acl --out fig_arch.pdf
 uv run $S/check_figure.py --venue acl fig_*.pdf                 # width / font checks for the venue
 uv run $S/layout_check.py paper/main.tex --venue acl --save-baseline before.json   # before editing (+ page budget)
 uv run $S/layout_check.py paper/main.tex --compare before.json         # after editing: exit 1 if worse
@@ -306,7 +306,7 @@ skills/top-tier-paper-writing/
 │   ├── result_stats.py           # 从结果 CSV 计算领先幅度、排名、区间、降幅，以及“未领先”的设置
 │   ├── plot_data_curves.py       # 多种子曲线（均值 ± 标准差、敏感性最优点、两阶段分隔）
 │   ├── plot_bar_ablation.py      # 分组柱状图（误差棒、相对完整模型的增量）
-│   ├── gen_architecture_diagram.py  # 由 JSON 规格生成架构图（带编号步骤，自动检查重叠）
+│   ├── gen_architecture_diagram.py  # 由 JSON 规格生成架构图（编号步骤、参与方图形、内嵌曲线、示例图网格，自动检查重叠）
 │   ├── pubstyle.py               # 共享绘图样式（尺寸、字体、Okabe-Ito 配色）
 │   ├── figstyle.py               # 读取并校验分领域的架构图风格档案
 │   ├── check_figure.py           # 图 PDF 检查：宽度（按会议）、Type 3 字体、矢量
@@ -408,7 +408,7 @@ uv run $S/plot_data_curves.py --data curves.csv --ours "FedPE (Ours)" \
     --xlabel "Communication rounds" --ylabel "Test accuracy (%)" --out fig_conv.pdf
 uv run $S/plot_bar_ablation.py --data ablation.csv --ours "Full model" --annotate-delta --out fig_abl.pdf
 uv run $S/plot_bar_ablation.py --data defense.csv --paired "No defense" "With defense" --venue acl --out fig_def.pdf
-uv run $S/gen_architecture_diagram.py --spec fig_arch.json --out fig_arch.pdf
+uv run $S/gen_architecture_diagram.py --spec fig_arch.json --style <domain_id> --venue acl --out fig_arch.pdf
 uv run $S/check_figure.py --venue acl fig_*.pdf                 # 按会议检查宽度 / 字体
 uv run $S/layout_check.py paper/main.tex --venue acl --save-baseline before.json   # 改稿前（含页数预算）
 uv run $S/layout_check.py paper/main.tex --compare before.json         # 改稿后：变差则退出码为 1

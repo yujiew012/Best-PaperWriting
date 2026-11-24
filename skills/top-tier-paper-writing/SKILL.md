@@ -103,9 +103,9 @@ Run order: **H → A/B → C/D → F → E → G**. Branch I runs only on reques
      - `plot_data_curves.py` for convergence curves, sensitivity sweeps, two-phase tests and small multiples (`panel` column, `--logx`, `--invert-x`, `--band`);
      - `plot_bar_ablation.py` for ablations and backbone comparisons; `--paired BEFORE AFTER` for with/without-treatment comparisons (e.g. a defense); `--adverse` marks attack conditions;
      - `compose_examples.py` for example-input figures (clean vs. degraded inputs; redact harmful content first);
-     - `gen_architecture_diagram.py --spec <json> --style <domain_id> --venue <venue>` for system diagrams. The style profile `references/figure_styles/<domain_id>.json` sets fonts, strokes, fills, group lines and role colours for the research area (`default.json` when the domain has none). Ask the user about components or data flow if they are unclear.
+     - `gen_architecture_diagram.py --spec <json> --style <domain_id> --venue <venue>` for system diagrams. The style profile `references/figure_styles/<domain_id>.json` sets fonts, strokes, fills, group lines and role colours for the research area (`default.json` when the domain has none). Blocks can be glyphs (`shape`: attacker, user, model, shield, document, database) or insets (`image`: a plot or example grid); groups can hold an image grid (`images`). Ask the user about components or data flow if they are unclear.
   4. Resolve every `[warn]` the script prints: overlap, fewer than 3 seeds, a box too narrow for its text.
-- **Verify:** `check_figure.py --venue <venue> <pdfs>` exits 0; `gen_architecture_diagram.py` exits 0 (it exits 1 on any collision). If you can view images, inspect the PNG preview. A caption is written (Branch D).
+- **Verify:** `check_figure.py --venue <venue> <pdfs>` exits 0; `gen_architecture_diagram.py` exits 0 (it exits 1 on any collision, cramped text, partly overlapping groups or an arrow through an unrelated block, group or title). If you can view images, inspect the PNG preview. A caption is written (Branch D).
 
 ### D. Captions and tables
 - **Read** `references/figures_and_captions.md` §4–5.
