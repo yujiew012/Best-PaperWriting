@@ -1,0 +1,43 @@
+{
+  "domain": "distributed_systems",
+  "notes": "Systems papers use layered or request-path figures with crisp, square-ish blocks and solid layer outlines; numbered steps follow the request path.",
+  "base": {
+    "layout": "layered",
+    "font": {
+      "block_title": 8,
+      "block_sub": 6.8,
+      "group_title": 8,
+      "edge_label": 6.8,
+      "badge": 7
+    },
+    "stroke": {
+      "block": 1.1,
+      "group": 1.0,
+      "arrow": 1.1,
+      "core_emphasis": 1.0
+    },
+    "block": {
+      "corner": 0.03,
+      "fill": "light"
+    },
+    "group": {
+      "line": "solid",
+      "fill": false
+    },
+    "badge": {
+      "color": "vermilion",
+      "size": 11
+    },
+    "roles": {
+      "core": "blue",
+      "support": "bluish_green",
+      "adverse": "vermilion",
+      "neutral": "grey"
+    },
+    "edge": {
+      "label_box": true
+    },
+    "max_label_words": 4
+  },
+  "provisional": {}
+}

@@ -38,6 +38,24 @@
           "valid": true,
           "role": "train"
         }
+      ],
+      "figure_domain": "llm_agent_security",
+      "figure_best_score": 3.583,
+      "figure_history": [
+        {
+          "run": "20261124-082831",
+          "iter": 1,
+          "score": 3.167,
+          "valid": true,
+          "role": "train"
+        },
+        {
+          "run": "20261124-082831",
+          "iter": 2,
+          "score": 3.583,
+          "valid": true,
+          "role": "train"
+        }
       ]
     }
   },
@@ -374,6 +392,138 @@
           "iter": 2
         }
       ]
+    },
+    {
+      "id": "S-0001",
+      "scope": "style:llm_agent_security",
+      "param": "max_label_words",
+      "value": 6,
+      "previous": 4,
+      "text": "llm_agent_security diagrams: set max_label_words = 6 (was 4). Figures in this area routinely show short prompts and model replies verbatim (jailbreak responses, refusals, injected instructions), which typically need five or six words.",
+      "files": [
+        "references/figure_styles/llm_agent_security.json"
+      ],
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-082831",
+          "iter": 1,
+          "gap": "G8"
+        }
+      ],
+      "counter": [],
+      "status": "provisional",
+      "root_cause": "style_parameter",
+      "history": [
+        {
+          "t": "2026-11-24 08:42:33",
+          "event": "created",
+          "status": "provisional",
+          "run": "20261124-082831",
+          "iter": 1
+        }
+      ],
+      "applied": [
+        {
+          "run": "20261124-082831",
+          "paper": "d1fb80825a",
+          "iter": 1
+        }
+      ]
+    },
+    {
+      "id": "R-0012",
+      "scope": "domain:llm_agent_security",
+      "text": "In threat-model and attack-defense figures, reserve the adverse role (fill and border) for attacker-controlled actors and successful-attack outcomes; draw payloads, attack-variant lists and intermediate artefacts as neutral blocks (at most an adverse edge), never mark inputs on a path that ends safely as adverse, and if more than a third of the blocks would be adverse, demote all but the attacker and the attack outcome.",
+      "files": [
+        "references/domains/llm_agent_security.md"
+      ],
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-082831",
+          "iter": 1,
+          "gap": "G4"
+        }
+      ],
+      "counter": [],
+      "status": "provisional",
+      "root_cause": "missing_rule",
+      "skill_location": "references/figures_and_captions.md §2.2; references/domains/llm_agent_security.md §5",
+      "history": [
+        {
+          "t": "2026-11-24 08:42:34",
+          "event": "created",
+          "status": "provisional",
+          "run": "20261124-082831",
+          "iter": 1
+        }
+      ],
+      "applied": [
+        {
+          "run": "20261124-082831",
+          "paper": "d1fb80825a",
+          "iter": 1
+        }
+      ]
+    },
+    {
+      "id": "R-0013",
+      "scope": "universal",
+      "text": "When one shared component produces different outcomes depending on its input, keep the alternatives in parallel lanes up to their outcomes: span the shared block across the lanes, repeat it per lane, or label each outgoing edge with its condition; never merge the paths into one node and fan out again unlabelled.",
+      "files": [
+        "references/figures_and_captions.md"
+      ],
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-082831",
+          "iter": 1,
+          "gap": "G3"
+        }
+      ],
+      "counter": [],
+      "status": "candidate",
+      "root_cause": "missing_rule",
+      "skill_location": "references/figures_and_captions.md §2.1 (Dual-Path)",
+      "history": [
+        {
+          "t": "2026-11-24 08:42:34",
+          "event": "created",
+          "status": "candidate",
+          "run": "20261124-082831",
+          "iter": 1
+        }
+      ]
+    },
+    {
+      "id": "R-0014",
+      "scope": "universal",
+      "text": "Draw an enumeration of variants or instances as an aligned row or column of equal-size blocks under one shared header, without an arrow per item, and place control inputs such as prompts, policies or defenses upstream of the component they act on so no edge points against the reading direction.",
+      "files": [
+        "references/figures_and_captions.md"
+      ],
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-082831",
+          "iter": 1,
+          "gap": "G6"
+        }
+      ],
+      "counter": [],
+      "status": "candidate",
+      "root_cause": "missing_rule",
+      "skill_location": "references/figures_and_captions.md §2.4",
+      "history": [
+        {
+          "t": "2026-11-24 08:42:34",
+          "event": "created",
+          "status": "candidate",
+          "run": "20261124-082831",
+          "iter": 1
+        }
+      ]
     }
   ],
   "runs": [
@@ -383,6 +533,75 @@
       "papers": [
         "d1fb80825a"
       ]
+    },
+    {
+      "run": "20261124-082831",
+      "finished": "2026-11-24 08:53:11",
+      "papers": [
+        "d1fb80825a"
+      ]
+    }
+  ],
+  "feature_requests": [
+    {
+      "id": "F-0001",
+      "text": "Add an `inset` block type to gen_architecture_diagram.py that places an external PDF/PNG (e.g. the output of plot_data_curves.py or compose_examples.py) at block coordinates, scaled to fit while keeping its aspect ratio, with an optional caption label underneath; the layout checker should treat it as an opaque block for overlap and arrow-anchoring checks.",
+      "aspect": "completeness",
+      "status": "open",
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-082831",
+          "iter": 1,
+          "gap": "G1"
+        }
+      ],
+      "created": "2026-11-24 08:42:33"
+    },
+    {
+      "id": "F-0002",
+      "text": "Support an `image_grid` group (or reuse the `inset` block) that lays out N image cells of equal size with a label under each, taking image paths from the spec, so example inputs produced by compose_examples.py can sit inside an overview panel instead of being replaced by text descriptions.",
+      "aspect": "domain_conventions",
+      "status": "open",
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-082831",
+          "iter": 1,
+          "gap": "G2"
+        }
+      ],
+      "created": "2026-11-24 08:42:33"
+    },
+    {
+      "id": "F-0003",
+      "text": "Add a block `shape` attribute with a small set of built-in, style-consistent actor glyphs (e.g. `actor_attacker`, `actor_user`, `model`, `shield`) drawn as simple vector pictograms in the block's role colour, with the label underneath, so parties can be told apart from data and processes by shape rather than by label alone.",
+      "aspect": "emphasis",
+      "status": "open",
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-082831",
+          "iter": 1,
+          "gap": "G5"
+        }
+      ],
+      "created": "2026-11-24 08:42:33"
+    },
+    {
+      "id": "F-0004",
+      "text": "Make the layout check flag any two group outlines that partially overlap or share an edge (a group must be either fully inside another with a margin, or fully disjoint), and warn when an edge crosses a group border that neither of its endpoints belongs to.",
+      "aspect": "visual_quality",
+      "status": "open",
+      "evidence": [
+        {
+          "paper": "d1fb80825a",
+          "run": "20261124-082831",
+          "iter": 1,
+          "gap": "G7"
+        }
+      ],
+      "created": "2026-11-24 08:42:33"
     }
   ]
 }

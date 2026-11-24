@@ -34,6 +34,7 @@
 - Validate LLM-as-judge against human judgments.
 
 ## 5. Figures and tables
+- Diagram style: `references/figure_styles/nlp_llm.json` (pass `--style nlp_llm` to `gen_architecture_diagram.py`).
 - Main table: methods × benchmarks for each model; best results in bold; average column.
 - Scaling plots (accuracy vs. model size, samples or tokens).
 - One qualitative example figure or table showing the method's behaviour (with a failure case in the appendix).

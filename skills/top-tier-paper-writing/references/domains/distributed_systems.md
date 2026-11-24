@@ -33,6 +33,7 @@
 - Repeat runs; report variance or confidence intervals; warm-up and measurement duration.
 
 ## 5. Figures and tables
+- Diagram style: `references/figure_styles/distributed_systems.json` (pass `--style distributed_systems` to `gen_architecture_diagram.py`).
 - Layered or pipeline architecture figure with numbered steps on the request path.
 - Latency CDFs; throughput-latency curves; stacked time-breakdown bars; speedup vs. nodes.
 - Motivation figures from the measurement study, in §2.

@@ -26,7 +26,7 @@ Written from the perspective of a senior PhD researcher and reviewer with severa
 3. **Captions.** Sentence case for figures and Title Case for tables; captions describe, they never conclude.
 4. **Prose.** Introductions built on paired challenges, real-world cases and insights; results paragraphs as claim → evidence → mechanism, never reading the table aloud.
 5. **Two-column layout.** Three rules for float placement, checked automatically with `floatcheck.sty` + `check_layout.py`.
-6. **Self-evolution.** The companion `evolve-paper-skill` improves the skill from exemplar papers with three sub-agents (Extractor → Writer → Reviewer); an evidence ledger prevents overfitting.
+6. **Self-evolution.** The companion `evolve-paper-skill` improves the skill from exemplar papers with three sub-agents (Extractor → Writer → Reviewer); an evidence ledger prevents overfitting. A figure mode evolves the architecture-diagram rules and per-domain diagram styles the same way (Figure Extractor → Illustrator → Critic).
 7. **Revision and submission.** Backward-consistency pass after new experiments, multi-source bibliography verification, arXiv versions and journal extensions.
 
 See [`skills/top-tier-paper-writing/SKILL.md`](skills/top-tier-paper-writing/SKILL.md) for the full procedure and [`skills/evolve-paper-skill/SKILL.md`](skills/evolve-paper-skill/SKILL.md) for the evolution loop.
@@ -101,6 +101,7 @@ skills/top-tier-paper-writing/
 │   ├── gen_architecture_diagram.py  # architecture diagram from a JSON spec (numbered steps; exits 1 on any collision)
 │   ├── compose_examples.py       # grid of example inputs (clean vs. attacked) at the venue's width
 │   ├── pubstyle.py               # shared plot style (sizes, fonts, Okabe-Ito palette)
+│   ├── figstyle.py               # loads and bounds-checks the per-domain diagram style profiles
 │   ├── check_figure.py           # figure PDF checks: width (per venue), Type 3 fonts, vector output
 │   ├── layout_check.py           # one command: diagnostic build + float checks + baseline compare
 │   ├── check_layout.py, floatcheck.sty  # float position recording and analysis
@@ -112,6 +113,7 @@ skills/top-tier-paper-writing/
 │   ├── writing/                  # per section: principles & style, abstract/intro, related work/preliminaries, method/theory, evaluation, discussion/conclusion/ethics
 │   ├── domains/                  # standardized domain templates (same 8 sections): security_privacy, llm_agent_security, machine_learning_fl, distributed_systems, nlp_llm
 │   ├── figures_and_captions.md   # architecture diagrams, data plots, tables, captions, with good/bad examples
+│   ├── figure_styles/            # per-domain diagram styles (<domain>.json: fonts, strokes, fills, role colours, topology) + _bounds.json
 │   ├── layout_and_typesetting.md # the three float rules, measurement workflow, repair ladder
 │   ├── bibliography.md           # multi-source bibliography verification
 │   ├── revision_and_submission.md# backward consistency, arXiv versions, journal extensions
@@ -126,9 +128,10 @@ skills/top-tier-paper-writing/
 skills/evolve-paper-skill/          # for maintainers: evolves the skill above from exemplar papers
 ├── SKILL.md                      # orchestrator SOP: iteration loop, sub-agents, approval gates, Definition of Done
 ├── scripts/evolve.py             # deterministic orchestration: isolated workspaces, validation, leakage checks, scoring, keep/revert, ledger, anti-overfitting guards
-├── assets/agents/                # role task templates: extractor.md, writer.md, reviewer.md
-├── assets/schemas/               # contracts for materials.json and review.json
-└── references/                   # anti_overfitting.md (rule admission ladder), review_rubric.md (8 scoring dimensions)
+├── scripts/figure_mode.py        # figure mode: brief checks, gold-figure cropping, coverage, style-profile ledger, feature requests
+├── assets/agents/                # role task templates: extractor, writer, reviewer; fig_extractor, illustrator, critic
+├── assets/schemas/               # contracts for materials, review, figure_brief and figure_review
+└── references/                   # anti_overfitting.md (rule admission ladder), review_rubric.md (8 dims), figure_rubric.md (6 dims)
 docs/
 ├── images/                       # workflow diagram, sponsor codes
 └── diagram/                      # code that generates and checks the workflow diagram
@@ -171,7 +174,17 @@ Give the main agent one or more published top-tier papers. Following the `evolve
 | Holdout check | Earlier exemplars (cached materials) confirm that new edits did not make older papers worse. |
 | Human approval | You confirm the papers and the number of iterations up front, then review `report.md` and the `git diff` to keep the changes or `revert --to-base`. |
 
-Usage: tell the agent "evolve the paper-writing skill with these papers, 3 iterations", and it loads `evolve-paper-skill` and follows the procedure. Paper text, materials and drafts stay in `.evolution/` (git-ignored) and never enter the repository.
+**Figure mode (architecture diagrams).** `evolve.py init --mode figure` withholds the paper's architecture or overview figure. A Figure Extractor writes a content-only brief: entities, roles, relations, numbered steps and groups, with layout and colour words rejected by the script. The script crops the original from the PDF. An Illustrator redraws the figure from the brief with the skill's generator and the domain's style profile, and a Critic that can view images compares the two on 6 dimensions (completeness, structure, flow, emphasis, domain conventions, visual quality). Each gap goes down one of three paths:
+
+| Gap | Path |
+| :--- | :--- |
+| A figure rule is missing, vague or wrong | `propose`: the same evidence ladder as writing rules (domain §8 first) |
+| A style value suits the domain badly (fonts, strokes, fills, role colours, topology) | `propose-style`: the script writes a value inside `figure_styles/_bounds.json` as a provisional override of `figure_styles/<domain>.json`; it moves into the base when a second paper agrees |
+| The generator cannot draw it (icons, panels, curved edges) | `request-feature`: logged for a human; the loop never edits scripts |
+
+The figure is judged on what it communicates, not on likeness to the original. A re-render with more layout issues, or lower coverage of the brief, is reverted regardless of the Critic's score.
+
+Usage: tell the agent "evolve the paper-writing skill with these papers, 3 iterations" (or "evolve the figure skill with this paper's architecture diagram, 2 iterations"), and it loads `evolve-paper-skill` and follows the procedure. Paper text, materials and drafts stay in `.evolution/` (git-ignored) and never enter the repository.
 
 ### 5. Script Quick Reference
 
@@ -221,7 +234,7 @@ All checkers use the same exit codes: 0 = pass, 1 = problems found, 2 = input or
 3. **Caption 规范**：图用 Sentence case、表用 Title Case，Caption 不下结论；
 4. **正文写作**：引言“双挑战—双案例—双直觉”，实验段落“总—分—归因”，拒绝报菜名；
 5. **双栏排版**：浮动体三大铁律，配套 `floatcheck.sty` + `check_layout.py` 自动检查；
-6. **自进化**：配套的 `evolve-paper-skill` 用顶会/顶刊范文驱动 Extractor → Writer → Reviewer 三个子 Agent 迭代改进 Skill，并以证据账本防止过拟合；
+6. **自进化**：配套的 `evolve-paper-skill` 用顶会/顶刊范文驱动 Extractor → Writer → Reviewer 三个子 Agent 迭代改进 Skill，并以证据账本防止过拟合；图表模式以同样方式（Figure Extractor → Illustrator → Critic）进化架构图规则与分领域的图风格；
 7. **修订与投稿**：补实验后全文回溯、参考文献多源核验、arXiv 版本与期刊扩展投稿。
 
 完整规范见 [`skills/top-tier-paper-writing/SKILL.md`](skills/top-tier-paper-writing/SKILL.md)，自进化流程见 [`skills/evolve-paper-skill/SKILL.md`](skills/evolve-paper-skill/SKILL.md)。
@@ -295,6 +308,7 @@ skills/top-tier-paper-writing/
 │   ├── plot_bar_ablation.py      # 分组柱状图（误差棒、相对完整模型的增量）
 │   ├── gen_architecture_diagram.py  # 由 JSON 规格生成架构图（带编号步骤，自动检查重叠）
 │   ├── pubstyle.py               # 共享绘图样式（尺寸、字体、Okabe-Ito 配色）
+│   ├── figstyle.py               # 读取并校验分领域的架构图风格档案
 │   ├── check_figure.py           # 图 PDF 检查：宽度（按会议）、Type 3 字体、矢量
 │   ├── compose_examples.py       # 示例输入网格（干净 vs. 攻击），按会议宽度
 │   ├── layout_check.py           # 一条命令：诊断编译 + 浮动体检查 + 基线对比
@@ -307,6 +321,7 @@ skills/top-tier-paper-writing/
 │   ├── writing/                  # 按章节拆分：原则与句式、摘要/引言、相关工作/预备知识、方法/理论、实验、讨论/结论/伦理
 │   ├── domains/                  # 标准化领域模板（统一 8 节结构）：security_privacy、llm_agent_security、machine_learning_fl、distributed_systems、nlp_llm
 │   ├── figures_and_captions.md   # 架构图、实验图、表格、Caption 规则与正反例
+│   ├── figure_styles/            # 分领域架构图风格（<领域>.json：字号、线宽、填充、角色颜色、拓扑）+ _bounds.json 取值范围
 │   ├── layout_and_typesetting.md # 浮动体三条铁律、测量流程、修复阶梯
 │   ├── bibliography.md           # 参考文献多源核验
 │   ├── revision_and_submission.md# 补实验后回溯、arXiv 版本、期刊扩展
@@ -321,9 +336,10 @@ skills/top-tier-paper-writing/
 skills/evolve-paper-skill/          # 维护者使用：用范文进化上面的 Skill
 ├── SKILL.md                      # 主 Agent（编排者）的 SOP：迭代循环、子 Agent 调用、人工确认、完成标准
 ├── scripts/evolve.py             # 确定性编排：工作区隔离、校验、泄漏检测、打分、保留/回滚、证据账本、防过拟合检查
-├── assets/agents/                # 三个角色的任务模板：extractor.md、writer.md、reviewer.md
-├── assets/schemas/               # materials.json 与 review.json 的格式契约
-└── references/                   # anti_overfitting.md（规则准入阶梯）、review_rubric.md（8 维评分锚点）
+├── scripts/figure_mode.py        # 图表模式：简报检查、原图裁剪、覆盖率、风格档案账本、生成器需求清单
+├── assets/agents/                # 角色任务模板：extractor、writer、reviewer；fig_extractor、illustrator、critic
+├── assets/schemas/               # materials、review、figure_brief、figure_review 的格式契约
+└── references/                   # anti_overfitting.md（规则准入阶梯）、review_rubric.md（8 维评分锚点）、figure_rubric.md（6 维图评分）
 docs/
 ├── images/                       # 流程图、赞助二维码
 └── diagram/                      # 生成并检查流程图的代码
@@ -366,7 +382,17 @@ docs/
 | 留出检验 | 用以前的范文（缓存的材料）检验本轮改动没有让旧论文变差 |
 | 人工确认 | 开始前确认范文与迭代次数；结束后由你审阅 `report.md` 与 `git diff` 决定保留或 `revert --to-base` |
 
-使用方式：在 Agent 中说“用这几篇论文进化论文写作 Skill，迭代 3 轮”，Agent 会加载 `evolve-paper-skill` 并按流程执行。论文原文、材料与草稿只保存在 `.evolution/`（已加入 `.gitignore`），不会进入仓库。
+**图表模式（架构图）**：`evolve.py init --mode figure` 会隐去论文的架构图或总览图。Figure Extractor 写一份只描述内容的简报（实体、角色、关系、编号步骤、分组），出现布局或颜色词即被脚本拒绝；脚本从 PDF 中裁出原图。Illustrator 按简报、用 Skill 的生成器和该领域的风格档案重画，能看图的 Critic 从 6 个维度（完整性、结构、流向、重点、领域惯例、视觉质量）对比两张图。每个差距走三条路径之一：
+
+| 差距 | 处理 |
+| :--- | :--- |
+| 图规则缺失、含糊或有误 | `propose`：与写作规则相同的证据阶梯（先进领域模板 §8） |
+| 风格参数不适合该领域（字号、线宽、填充、角色颜色、拓扑） | `propose-style`：由脚本在 `figure_styles/_bounds.json` 范围内写入 `figure_styles/<领域>.json` 的暂定覆盖值；第 2 篇论文给出相同取值后才进入 base |
+| 生成器画不出来（图标、分面板、曲线边） | `request-feature`：记入需求清单交给人工；循环从不修改脚本 |
+
+评判的是图表达得好不好，而不是像不像原图。重新渲染后布局问题变多或简报覆盖率下降的一轮，无论 Critic 打几分都会回滚。
+
+使用方式：在 Agent 中说“用这几篇论文进化论文写作 Skill，迭代 3 轮”（或“用这篇论文的架构图进化画图 Skill，迭代 2 轮”），Agent 会加载 `evolve-paper-skill` 并按流程执行。论文原文、材料与草稿只保存在 `.evolution/`（已加入 `.gitignore`），不会进入仓库。
 
 ### 五、脚本速查
 

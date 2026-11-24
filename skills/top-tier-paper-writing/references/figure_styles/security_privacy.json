@@ -1,0 +1,43 @@
+{
+  "domain": "security_privacy",
+  "notes": "Security papers centre the figure on trust boundaries: dashed group outlines mark who is trusted, attacker entities use the adverse colour, and the defense is the emphasised core.",
+  "base": {
+    "layout": "threat_model",
+    "font": {
+      "block_title": 8,
+      "block_sub": 6.8,
+      "group_title": 8,
+      "edge_label": 6.8,
+      "badge": 7
+    },
+    "stroke": {
+      "block": 1.1,
+      "group": 1.0,
+      "arrow": 1.1,
+      "core_emphasis": 1.3
+    },
+    "block": {
+      "corner": 0.08,
+      "fill": "light"
+    },
+    "group": {
+      "line": "dashed",
+      "fill": true
+    },
+    "badge": {
+      "color": "vermilion",
+      "size": 11
+    },
+    "roles": {
+      "core": "blue",
+      "support": "bluish_green",
+      "adverse": "vermilion",
+      "neutral": "grey"
+    },
+    "edge": {
+      "label_box": true
+    },
+    "max_label_words": 4
+  },
+  "provisional": {}
+}

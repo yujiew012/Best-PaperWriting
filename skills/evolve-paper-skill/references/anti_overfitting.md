@@ -51,3 +51,17 @@ Rewrite each `proposed_rule` from the review until it passes all five tests:
 ## 5. Regression protection
 - The keep/revert decision compares each new draft with the best earlier draft of the same paper (tolerance 0.25 on the 1–5 scale). A drop reverts the edits that caused it, and those rules become `rejected`.
 - Run at least one **holdout** paper (an earlier exemplar with cached materials) after evolving on a new paper. A drop against its previous best means the edits overfit; consider `revert --to-base`.
+
+## 6. Figure mode
+
+A figure is judged on what it communicates, not on whether it looks like the original.
+
+1. **No imitation.** A gap that only says "make it look like the gold" (same colours, same arrangement) is not a skill defect. Rules and style changes must name a communication goal, e.g. "the attacker must be visually distinct from benign parties" or "a trust boundary encloses the trusted components".
+2. **Content-only brief.** The brief must not dictate layout, so the Illustrator's design follows the skill rather than the original. `check-brief` rejects appearance words; do not work around it with synonyms.
+3. **Three kinds of change, three paths:**
+   - *Figure rules* (what to show, numbering, labelling, conventions of a research area) follow the same ladder as writing rules: §8 of the domain template first, `figures_and_captions.md` only with papers from ≥ 2 domains.
+   - *Style values* (fonts, strokes, fills, role colours, default topology) change only through `propose-style`. Values are confined to `references/figure_styles/_bounds.json`, start as provisional overrides of one domain's profile, and move into its base when a second paper agrees. `default.json` needs agreement from 2 domains.
+   - *Generator capabilities* (icons, curved or bundled edges, panels, nested groups) are **never** changed by the loop. `request-feature` logs them with their support count for a human.
+4. **Budgets.** ≤ 3 style changes per iteration and ≤ 6 per paper. A value reverted in a run cannot be proposed again in that run.
+5. **Deterministic floor.** A figure that renders with more layout issues or lower brief coverage than the best earlier iteration is reverted, whatever the Critic's score.
+

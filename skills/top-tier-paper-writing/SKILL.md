@@ -103,7 +103,7 @@ Run order: **H → A/B → C/D → F → E → G**. Branch I runs only on reques
      - `plot_data_curves.py` for convergence curves, sensitivity sweeps, two-phase tests and small multiples (`panel` column, `--logx`, `--invert-x`, `--band`);
      - `plot_bar_ablation.py` for ablations and backbone comparisons; `--paired BEFORE AFTER` for with/without-treatment comparisons (e.g. a defense); `--adverse` marks attack conditions;
      - `compose_examples.py` for example-input figures (clean vs. degraded inputs; redact harmful content first);
-     - `gen_architecture_diagram.py` with a JSON spec for system diagrams. Ask the user about components or data flow if they are unclear.
+     - `gen_architecture_diagram.py --spec <json> --style <domain_id> --venue <venue>` for system diagrams. The style profile `references/figure_styles/<domain_id>.json` sets fonts, strokes, fills, group lines and role colours for the research area (`default.json` when the domain has none). Ask the user about components or data flow if they are unclear.
   4. Resolve every `[warn]` the script prints: overlap, fewer than 3 seeds, a box too narrow for its text.
 - **Verify:** `check_figure.py --venue <venue> <pdfs>` exits 0; `gen_architecture_diagram.py` exits 0 (it exits 1 on any collision). If you can view images, inspect the PNG preview. A caption is written (Branch D).
 
@@ -237,5 +237,6 @@ Before you report completion, run the checks that apply and include their result
 | `scripts/validate_skill.py` | Maintainers: validate this skill's packaging |
 | `references/lint_rules.md` | Every checker code, with its fix |
 | `references/venues.json` | Venue profiles: widths, caption case, required sections, page limits, class files |
+| `references/figure_styles/` | Per-domain diagram style profiles (`<domain>.json`: base + provisional values) and their allowed ranges (`_bounds.json`) |
 | `references/domains/` | Standardized per-domain templates (skeleton, mandatory elements, evaluation protocol, rejection risks, provisional rules) |
 | `references/case_lessons_ieee_sp.md`, `references/case_lessons_ieee_tcc.md` | Worked lessons from two real submissions |

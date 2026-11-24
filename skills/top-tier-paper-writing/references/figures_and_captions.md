@@ -26,6 +26,9 @@
 | 自底向上的层级 | **Layered**（从下到上） | 数据层 → 协议层 → 计算层 → 应用层 |
 | 中心协调 + 分布式节点 | **Hub-and-Spoke** | 联邦学习服务端与客户端、分布式系统 |
 | 与传统方案对比 | **Dual-Path**（上：传统失败路径，下：本文增强路径） | 防御 vs. 无防御 |
+| 攻击者、受害系统与防御的交互 | **Threat Model**（信任边界框住受害系统；攻击者在边界外；有防御时用 Dual-Path 对照有/无防御两条路径） | 越狱攻击与防御、提示注入 |
+
+风格档案中 `layout` 的取值 `pipeline`、`layered`、`hub_and_spoke`、`dual_path`、`threat_model` 分别对应上表五行。
 
 ### 2.2 现代简约风格（Modern Minimal）
 
@@ -33,16 +36,18 @@
 - 角色边界（如 Client / Server）用浅色虚线大框隔离并标注角色名。
 - 关键数据流用带圈编号 ①–⑥ 标注，徽章放在箭头中段或框外缘，**NEVER** 遮挡模块文字；方法章节正文逐一引用编号（*"As depicted in step ③ of Fig. 2, …"*）。
 - 本文核心模块用强调色（蓝 `#0072B2`），基线/对抗实体用朱红 `#D55E00`。
+- 字号、线宽、圆角、填充深浅、分组框线型和各角色颜色由领域风格档案 `references/figure_styles/<domain_id>.json` 决定（如安全类论文强调信任边界与攻击者，系统类论文用实线分层框）；**NEVER** 在 spec 里硬编码颜色或线宽。档案中 `provisional` 下的值来自自进化循环，仅有一篇范文支持。
 
 ### 2.3 用脚本生成
 
 把图写成 JSON 规格（格式见 `assets/architecture_example.json`），再运行：
 
 ```bash
-uv run <skill_dir>/scripts/gen_architecture_diagram.py --spec fig_arch.json --out fig_arch.pdf
+uv run <skill_dir>/scripts/gen_architecture_diagram.py --spec fig_arch.json \
+    --style <domain_id> --venue <venue> --out fig_arch.pdf
 ```
 
-`role` 取值：`core`（本文模块）、`support`（服务端/辅助）、`adverse`（攻击/约束）、`neutral`（数据/通用组件）。边的 `step` 字段生成编号徽章。
+`role` 取值：`core`（本文模块）、`support`（服务端/辅助）、`adverse`（攻击/约束）、`neutral`（数据/通用组件），颜色取自风格档案的 `roles`。边的 `step` 字段生成编号徽章。档案的 `layout` 值是该领域的默认拓扑（§2.1），内容需要时可以换。`--validate-style <domain_id>` 只检查档案是否在 `_bounds.json` 范围内。
 
 ### 2.4 自检清单
 

@@ -33,6 +33,7 @@
 - **Standard experiments:** main comparison across heterogeneity levels; convergence curves; ablation of each component; sensitivity to key hyperparameters; scalability in the number of clients; robustness to partial participation or dropping clients; cross-backbone variance when claiming architecture independence.
 
 ## 5. Figures and tables
+- Diagram style: `references/figure_styles/machine_learning_fl.json` (pass `--style machine_learning_fl` to `gen_architecture_diagram.py`).
 - Overview figure in hub-and-spoke layout (server ↔ clients) with numbered steps.
 - Main table: datasets × heterogeneity levels, best results in bold, mean ± std.
 - Convergence curves with shaded std over seeds; mark distribution-shift points if any.
