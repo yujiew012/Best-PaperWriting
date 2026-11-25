@@ -182,7 +182,13 @@ def cmd_eval_score(a):
     ctx = E.Ctx(a.workdir, a.run)
     case = load_case(ctx, a.case)
     ws = os.path.join(case_dir(ctx, a.case), "runs", a.eval_run)
+    if not os.path.isdir(ws):
+        runs = sorted(os.listdir(os.path.join(case_dir(ctx, a.case), "runs"))) \
+            if os.path.isdir(os.path.join(case_dir(ctx, a.case), "runs")) else []
+        E.die(f"no eval run '{a.eval_run}' for case {a.case}; runs: {runs or 'none (run eval-task)'}", 2)
     tex = os.path.join(ws, "draft", "main.tex")
+    if not os.path.exists(tex):
+        print(f"[warn] {tex} does not exist yet: run the Eval Writer first; scoring an empty draft")
     skill = os.path.join(ws, "skill")
     title, secs = section_text(skill, tex)
     res = {"case": a.case, "run": a.eval_run, "meta": E.jload(os.path.join(ws, "meta.json"), default={}), "graders": {}}
@@ -296,6 +302,8 @@ def cmd_eval_blind(a):
     cands = []
     for r in runs:
         ws = os.path.join(d, "runs", r)
+        if not os.path.isdir(ws):
+            E.die(f"no eval run '{r}' for case {a.case}", 2)
         title, secs = section_text(os.path.join(ws, "skill"), os.path.join(ws, "draft", "main.tex"))
         if not secs:
             E.die(f"run {r} has no abstract/introduction", 1)

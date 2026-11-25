@@ -141,8 +141,7 @@ def cited_keys(aux=None, tex=None):
             for m in re.finditer(r"\\(?:input|include|subfile)\{([^}]+)\}", src):
                 q = os.path.join(base, m.group(1))
                 todo.append(q if q.endswith(".tex") else q + ".tex")
-    keys.discard("*")
-    return keys
+    return keys                       # may contain "*" (\nocite{*}: every entry counts as cited)
 
 
 def main(argv=None):
@@ -204,10 +203,16 @@ def main(argv=None):
             add("B104", where, "preprint: check DBLP / Google Scholar for a peer-reviewed version and cite that")
 
     if args.aux or args.tex:
+        for given in (args.aux, args.tex):
+            if given and not os.path.exists(given):
+                print(f"[error] not found: {given}", file=sys.stderr)
+                return 2
         cited = cited_keys(args.aux, args.tex)
+        everything = "*" in cited
+        cited.discard("*")
         for k in sorted(cited - set(seen_keys)):
             add("B002", k, "cited but not in the .bib")
-        for k in sorted(set(seen_keys) - cited):
+        for k in sorted(set(seen_keys) - cited) if not everything else []:
             add("B105", seen_keys[k] + f" [{k}]", "entry never cited")
 
     order = {"B0": 0, "B1": 1}

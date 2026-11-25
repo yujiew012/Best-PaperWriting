@@ -105,7 +105,7 @@ def install_one(target: Path, name: str, source: Path, copy: bool, force: bool, 
         except (OSError, NotImplementedError) as e:
             print(f"  [note] symlink failed ({e}); copying instead")
     shutil.copytree(source, target, ignore=IGNORE)
-    return "copied"
+    return "updated (previous copy replaced)" if st == "copied" else "copied"
 
 
 def uninstall_one(target: Path, name: str, source: Path, force: bool, dry: bool) -> str:
@@ -147,6 +147,9 @@ def main(argv=None):
             print(f"[error] {SKILLS[n]}/SKILL.md: name must equal the folder name '{n}'", file=sys.stderr)
             return 2
 
+    if args.project and not Path(args.project).expanduser().is_dir():
+        print(f"[error] project directory not found: {args.project}", file=sys.stderr)
+        return 2
     if args.dest:
         bases = {Path(d).expanduser(): ["custom"] for d in args.dest}
     else:

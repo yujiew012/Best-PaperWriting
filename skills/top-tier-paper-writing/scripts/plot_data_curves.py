@@ -97,6 +97,10 @@ def main(argv=None):
             fail(f"'{name}' not found; methods are: {methods}")
 
     import math
+    if args.logx:
+        bad = sorted({x for pdata in data.values() for pts in pdata.values() for x in pts if x <= 0})
+        if bad:
+            fail(f"--logx needs x > 0; found x = {bad} (a log axis would silently drop these points)")
     import numpy as np
     import matplotlib.pyplot as plt
     panels = list(data)

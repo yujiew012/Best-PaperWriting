@@ -16,7 +16,8 @@ reruns LaTeX until cross-references settle, then runs check_layout.py.
 Options: --engine pdflatex|xelatex|lualatex (match the paper's real engine),
 --bibtex / --biber (when no up-to-date main.bbl sits next to main.tex),
 --outdir DIR (default: a fresh temporary directory, printed at the end),
---verify-identical (also build WITHOUT floatcheck and compare page counts).
+--verify-identical (also build WITHOUT floatcheck and compare page counts),
+--allow-errors (measure even when LaTeX reports recoverable errors; by default they fail the run).
 
 Exit codes: 0 ok / no regression, 1 rule violations or regression,
 2 build failure or usage error (see the printed LaTeX errors).
@@ -95,6 +96,8 @@ def main(argv=None):
     ap.add_argument("--page-limit", type=float, help="main-body page limit (overrides the venue's)")
     ap.add_argument("--save-baseline", metavar="JSON", help="save this report for a later --compare")
     ap.add_argument("--compare", metavar="JSON", help="compare with a saved baseline report")
+    ap.add_argument("--allow-errors", action="store_true",
+                    help="measure the layout even if LaTeX reported (recoverable) errors")
     ap.add_argument("--verify-identical", action="store_true",
                     help="also build without floatcheck and check the page count is identical")
     args = ap.parse_args(argv)
@@ -144,6 +147,14 @@ def main(argv=None):
             print("   " + e, file=sys.stderr)
         print("Fix: compile the paper normally first; floatcheck needs a document that compiles.",
               file=sys.stderr)
+        return 2
+    latex_errors = re.findall(r"^(?:\S+\.tex:\d+: |! ).+$", log, re.M)
+    if latex_errors and not args.allow_errors:
+        print(f"[error] LaTeX reported {len(latex_errors)} error(s); a layout measured on a document with errors "
+              f"is not the real layout. First errors:", file=sys.stderr)
+        for e in latex_errors[:5]:
+            print("   " + e, file=sys.stderr)
+        print("Fix them (or pass --allow-errors to measure anyway).", file=sys.stderr)
         return 2
 
     if args.verify_identical:

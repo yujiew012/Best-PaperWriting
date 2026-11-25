@@ -77,6 +77,8 @@ def validate(spec, base_dir):
     """Hard errors exit 2; layout problems are returned as a list of issue strings."""
     issues = []
     blocks = spec.get("blocks", [])
+    if not blocks:
+        fail("the spec has no blocks")
     ids = [b.get("id") for b in blocks]
     dup = {i for i in ids if ids.count(i) > 1}
     if dup:
@@ -138,10 +140,15 @@ def load_image(path, tmp):
         if not shutil.which("pdftoppm"):
             fail(f"{path}: rasterizing a PDF inset needs pdftoppm (poppler-utils); pass a PNG instead")
         prefix = os.path.join(tmp, f"inset{len(os.listdir(tmp))}")
-        subprocess.run(["pdftoppm", "-f", "1", "-l", "1", "-r", "300", "-png", "-singlefile", path, prefix],
-                       check=True, capture_output=True)
+        r = subprocess.run(["pdftoppm", "-f", "1", "-l", "1", "-r", "300", "-png", "-singlefile", path, prefix],
+                           capture_output=True, text=True)
+        if r.returncode != 0 or not os.path.exists(prefix + ".png"):
+            fail(f"cannot rasterize {path}: {r.stderr.strip()[:120] or 'pdftoppm failed'}")
         path = prefix + ".png"
-    return np.asarray(Image.open(path).convert("RGBA"))
+    try:
+        return np.asarray(Image.open(path).convert("RGBA"))
+    except Exception as e:  # noqa: BLE001 -- PIL raises several types for unreadable files
+        fail(f"cannot read image {path}: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -292,7 +299,13 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     if args.validate_style:
-        prof, ppath = figstyle.load(args.validate_style)
+        try:
+            prof, ppath = figstyle.load(args.validate_style)
+        except FileNotFoundError as e:
+            fail(str(e))
+        if not args.validate_style.endswith(".json") and os.path.basename(ppath) != f"{args.validate_style}.json":
+            print(f"[note] no profile '{args.validate_style}'; diagrams with --style {args.validate_style} use "
+                  f"{os.path.basename(ppath)}", file=sys.stderr)
         errs = figstyle.validate(prof)
         for e in errs:
             print(f"[error] {e}", file=sys.stderr)
@@ -312,7 +325,10 @@ def main(argv=None):
         fail(f"{path}: invalid JSON ({e})")
     base_dir = os.path.dirname(os.path.abspath(path))
     issues = validate(spec, base_dir)
-    profile, ppath = figstyle.load(args.style or spec.get("style", "default"))
+    try:
+        profile, ppath = figstyle.load(args.style or spec.get("style", "default"))
+    except FileNotFoundError as e:
+        fail(str(e))
     errs = figstyle.validate(profile)
     if errs:
         fail(f"style profile {ppath} violates its bounds: " + "; ".join(errs))
@@ -342,6 +358,8 @@ def main(argv=None):
         issues.append(f"canvas aspect {cw}:{ch} does not match the figure ({fw:.2f} x {fh:.2f} in): boxes are "
                       f"stretched {stretch:.2f}x; use a canvas of about {cw}:{cw * fh / fw:.1f}")
     tmp = tempfile.mkdtemp(prefix="arch_")
+    import atexit
+    atexit.register(shutil.rmtree, tmp, True)          # also on fail() exits
 
     # ---- groups (frames, titles, image-grid labels) ----------------------------------------
     groups = spec.get("groups", [])

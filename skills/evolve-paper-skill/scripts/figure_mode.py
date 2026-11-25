@@ -414,12 +414,15 @@ def cmd_score(a):
             decision = f"revert_to_{best['iter']}"
         metrics["best_previous"] = {"iter": best["iter"], "score": best["score"]}
     metrics["decision"] = decision
+    if E.jload(os.path.join(it, "metrics.json"), default={}).get("reverted"):
+        metrics["reverted"] = True          # re-scoring never revives an iteration that was reverted
     E.jsave(os.path.join(it, "metrics.json"), metrics)
     led = ctx.ledger()
     pe = led.setdefault("papers", {}).setdefault(pid, {})
     if valid and score > pe.get("figure_best_score", 0):
         pe["figure_best_score"] = score
-    pe.setdefault("figure_history", []).append({"run": run["run_id"], "iter": k, "score": score, "valid": valid,
+    pe["figure_history"] = [h for h in pe.get("figure_history", []) if (h.get("run"), h.get("iter")) != (run["run_id"], k)]
+    pe["figure_history"].append({"run": run["run_id"], "iter": k, "score": score, "valid": valid,
                                                 "role": p.get("role", "train")})
     E.jsave(ctx.ledger_path, led)
     print(f"paper {pid} figure iteration {k}: score {score:.2f}/5  "

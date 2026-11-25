@@ -50,7 +50,8 @@ def venue_ranges(name):
     with open(path, encoding="utf-8") as f:
         venues = json.load(f)["venues"]
     if name not in venues:
-        sys.exit(f"[error] unknown venue '{name}'; choose from: {', '.join(venues)}")
+        print(f"[error] unknown venue '{name}'; choose from: {', '.join(venues)}", file=sys.stderr)
+        sys.exit(2)
     v = venues[name]
     out = {"single": (v["column_width_in"] - 0.1, v["column_width_in"] + 0.1),
            "double": (v["text_width_in"] - 0.1, v["text_width_in"] + 0.1),

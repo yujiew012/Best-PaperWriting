@@ -111,7 +111,18 @@ def main(argv=None):
     if not old and not new:
         print("[error] no sentences found (check --section)", file=sys.stderr)
         return 2
-    reasons = json.load(open(a.reasons, encoding="utf-8")) if a.reasons else {}
+    reasons = {}
+    if a.reasons:
+        try:
+            reasons = json.load(open(a.reasons, encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as e:
+            print(f"[error] cannot read {a.reasons}: {e}", file=sys.stderr)
+            return 2
+        if not isinstance(reasons, dict):
+            print(f"[error] {a.reasons} must be a JSON object {{row number or sentence prefix: reason}}",
+                  file=sys.stderr)
+            return 2
+        reasons = {str(k): str(v) for k, v in reasons.items()}
     rs = rows(old, new, a.all)
     lines = ["| # | Status | Original | Revised | Reason | Accept? |", "| ---: | :--- | :--- | :--- | :--- | :---: |"]
     todo = 0

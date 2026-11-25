@@ -35,7 +35,8 @@ from collections import OrderedDict
 
 def load(path):
     if not os.path.exists(path):
-        sys.exit(f"[error] data file not found: {path}")
+        print(f"[error] data file not found: {path}", file=sys.stderr)
+        sys.exit(2)
     runs = OrderedDict()
     with open(path, newline="", encoding="utf-8-sig") as f:
         r = csv.DictReader(f)
@@ -88,6 +89,11 @@ def main(argv=None):
     report = {"source": os.path.abspath(args.data), "ours": args.ours,
               "direction": "lower is better" if args.lower_better else "higher is better", "settings": []}
 
+    methods_all = sorted({m for ms in runs.values() for m in ms})
+    if args.ours and args.ours not in methods_all:
+        print(f"[error] --ours '{args.ours}' is not a method in {args.data}; methods: {', '.join(methods_all)}",
+              file=sys.stderr)
+        return 2
     print(f"source: {args.data}  ({report['direction']})\n")
     if not args.ours:
         describe(runs, report, nd, sign)
@@ -103,7 +109,9 @@ def main(argv=None):
         base = [m for m in ranked if m != args.ours]
         o = stats[args.ours]
         entry = {"setting": setting, "ours_mean": o[0], "ours_std": o[1], "runs": o[2],
-                 "rank": ranked.index(args.ours) + 1, "n_methods": len(ranked)}
+                 # rank = 1 + methods strictly better (ties do not depend on the CSV row order)
+                 "rank": 1 + sum(1 for m in ranked if m != args.ours and sign * stats[m][0] > sign * o[0] + 1e-12),
+                 "n_methods": len(ranked)}
         if base:
             b = base[0]
             entry.update(best_baseline=b, best_baseline_mean=stats[b][0], margin=sign * (o[0] - stats[b][0]))
@@ -118,14 +126,17 @@ def main(argv=None):
         margins = [s["margin"] for s in with_margin]
         hardest = min(report["settings"], key=lambda s: sign * s["ours_mean"])
         not_best = [s["setting"] for s in report["settings"] if s["rank"] != 1]
+        tied = [s["setting"] for s in with_margin if abs(s["margin"]) <= 1e-12]
         summary = {"margin_min": min(margins), "margin_max": max(margins),
-                   "hardest_setting": hardest["setting"], "ours_not_best_in": not_best}
+                   "hardest_setting": hardest["setting"], "ours_not_best_in": not_best, "ours_tied_best_in": tied}
         report["summary"] = summary
         print(f"\nmargin over best baseline: {min(margins):+.{nd}f} to {max(margins):+.{nd}f}"
               f"  (positive = ours better)")
         print(f"hardest setting for ours: {hardest['setting']} ({fmt(hardest['ours_mean'], nd)})")
         print("ours is NOT best in: " + (", ".join(not_best) if not_best else "none")
               + ("   <- must be reported, not hidden" if not_best else ""))
+        if tied:
+            print("ours only TIES the best baseline in: " + ", ".join(tied) + "   <- do not call these wins")
 
     if args.drop:
         a, b = args.drop
@@ -160,8 +171,19 @@ def main(argv=None):
             print(f"\nsummary: {len(up)} increase, {len(down)} decrease, {len(same)} unchanged "
                   f"(of {len(ch)}); change {min(ch.values()):+.{nd}f} to {max(ch.values()):+.{nd}f} abs"
                   + (f", {min(rels):+.{nd}f}% to {max(rels):+.{nd}f}% rel" if rels else ""))
-            print("against the majority (" + majority + "): " + (", ".join(exceptions) if exceptions else "none")
+            print("against the majority (" + majority + "): "
+                  + (", ".join(m + (" (unchanged)" if m in same else "") for m in exceptions) if exceptions else "none")
                   + ("   <- must be reported, not hidden" if exceptions else ""))
+    # each method's mean over the settings it appears in (source for "on average across N settings" claims)
+    per_method = {}
+    for setting, methods in runs.items():
+        for m, v in methods.items():
+            per_method.setdefault(m, []).append(statistics.mean(v))
+    report["method_mean_over_settings"] = {m: {"mean": statistics.mean(v), "n_settings": len(v)}
+                                           for m, v in per_method.items()}
+    if len(runs) > 1:
+        print("\nmean over settings: " + ", ".join(f"{m} {fmt(d['mean'], nd)} (n={d['n_settings']})"
+                                               for m, d in report["method_mean_over_settings"].items()))
     if args.json:
         with open(args.json, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
