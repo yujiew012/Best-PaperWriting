@@ -29,6 +29,15 @@ the per-domain figure style profiles and a feature-request log for the generator
   request-feature  record a generator limitation for a human (scripts are never edited by the loop)
   resolve-feature  (human) mark a feature request done or declined once the generator was changed
 
+Corpus and held-out evaluation (corpus_mode.py, eval_mode.py):
+  corpus-stats     style metrics of the exemplar papers -> references/style_corpus/<domain>.json (numbers only)
+  add-exemplars    verbatim-checked, attributed passages -> references/exemplars/*.jsonl (--remove PAPER)
+  make-case        hold a paper out as an eval case (it can no longer train the skill)
+  eval-task        Eval Writer workspace for the current skill version
+  eval-score       deterministic graders (numbers traced, lint, budget, memorization)
+  eval-blind       anonymized pack incl. the original for a Judge sub-agent; --reveal records the ranking
+  eval-status      all cases, runs and blind results
+
 Typical loop (see SKILL.md): init -> task extractor -> check-materials ->
 [task writer -> task reviewer -> score -> propose* -> edit -> check-edits] x N -> finalize.
 Figure loop: init --mode figure -> task fig-extractor -> check-brief ->
@@ -58,6 +67,7 @@ UNIVERSAL_FILES = re.compile(r"^(SKILL\.md|references/writing/[\w-]+\.md|referen
                              r"mechanism_sentence_bank)\.md)$")
 DOMAIN_FILES = re.compile(r"^references/domains/([\w-]+)\.md$")
 STYLE_FILES = re.compile(r"^references/figure_styles/([\w-]+)\.json$")
+CORPUS_FILES = re.compile(r"^references/(?:style_corpus/[\w-]+\.json|exemplars/(?:moves|paragraphs)\.jsonl)$")
 IGNORED = {"evolution_ledger.json", "EVOLUTION_LOG.md"}
 MARKER = re.compile(r"<!--\s*(R-\d{4})\s*-->")
 
@@ -72,6 +82,15 @@ def fig():
     import figure_mode
     figure_mode.bind(sys.modules[__name__])
     return figure_mode
+
+
+def mod(name):
+    """corpus_mode / eval_mode, bound to this module (imported lazily)."""
+    sys.path.insert(0, HERE)
+    import importlib
+    m = importlib.import_module(name)
+    m.bind(sys.modules[__name__])
+    return m
 
 
 def is_figure(ctx):
@@ -213,6 +232,10 @@ class Ctx:
     def ledger_path(self):
         return os.path.join(self.skill, "evolution_ledger.json")
 
+    @staticmethod
+    def ledger_for(skill):
+        return jload(os.path.join(skill, "evolution_ledger.json"), default={})
+
     def ledger(self):
         return jload(self.ledger_path, default={"version": 1, "policy": {}, "papers": {}, "rules": [], "runs": []})
 
@@ -338,13 +361,14 @@ def cmd_init(a):
     ctx = Ctx(a.workdir)
     run_id = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir = os.path.join(ctx.workdir, "runs", run_id)
-    os.makedirs(run_dir)
     papers = []
     for spec in a.paper:
         path = os.path.abspath(spec)
         if not os.path.isfile(path):
             die(f"paper not found: {spec}")
         pid = sha256(path)[:10]
+        if ctx.ledger_for(skill).get("papers", {}).get(pid, {}).get("role") == "eval":
+            die(f"{os.path.basename(path)} ({pid}) is a held-out eval case; training on it would leak into its test", 1)
         cache = ctx.paper_cache(pid)
         os.makedirs(cache, exist_ok=True)
         text_ok = os.path.exists(os.path.join(cache, "source.txt"))
@@ -358,6 +382,7 @@ def cmd_init(a):
                 text_ok = os.path.exists(os.path.join(cache, "source.txt"))
         papers.append({"paper_id": pid, "source": path, "text": text_ok,
                        "materials": os.path.exists(os.path.join(cache, "materials.json")), "role": "train"})
+    os.makedirs(run_dir)                         # only once every paper is accepted
     base = os.path.join(run_dir, "base_snapshot")
     snapshot(skill, base)
     git = None
@@ -421,6 +446,8 @@ def cmd_task(a):
             "SOURCE_TEXT_PATH": os.path.join(cache, "source.txt"),
             "WRITE_SOURCE_TEXT": "no (already extracted)" if p["text"] else "YES",
             "SCHEMA_PATH": os.path.join(schema_dir, "materials.schema.json"),
+            "EXEMPLARS_PATH": os.path.join(cache, "exemplars.json"),
+            "FUNCTIONS_PATH": os.path.join(run["skill_dir"], "references", "exemplars", "functions.json"),
             "TAXONOMY_PATH": os.path.join(run["skill_dir"], "references", "domain_taxonomies.json")})
     else:
         k = a.iter
@@ -452,6 +479,7 @@ def cmd_task(a):
             snapshot(run["skill_dir"], os.path.join(ws, "skill"))
             os.remove(os.path.join(ws, "skill", "evolution_ledger.json")) if os.path.exists(
                 os.path.join(ws, "skill", "evolution_ledger.json")) else None
+            mod("corpus_mode").strip_paper_exemplars(os.path.join(ws, "skill"), pid)   # no quotes of this paper
             task = fill("writer.md", {"WORKSPACE": ws, "MATERIALS_PATH": os.path.join(ws, "materials.json"),
                                       "SKILL_DIR": os.path.join(ws, "skill"),
                                       "DRAFT_DIR": os.path.join(ws, "draft"),
@@ -680,6 +708,8 @@ def cmd_propose(a):
     pid = p["paper_id"]
     if p.get("role") == "holdout":
         die("holdout papers only measure regressions; do not propose rules from them", 1)
+    if ctx.ledger().get("papers", {}).get(pid, {}).get("role") == "eval":
+        die(f"paper {pid} is a held-out eval case; it cannot back rules", 1)
     pol = ctx.policy()
     figure = is_figure(ctx)
     review = jload(os.path.join(ctx.iter_dir(pid, a.iter), "figure_review.json" if figure else "review.json"))
@@ -827,6 +857,12 @@ def cmd_check_edits(a):
         uni, dom = UNIVERSAL_FILES.match(rel), DOMAIN_FILES.match(rel)
         if STYLE_FILES.match(rel) and is_figure(ctx):
             errors += fig().check_style_file(rel, old.get(rel), new.get(rel), rules, run["skill_dir"])
+            continue
+        if CORPUS_FILES.match(rel):
+            if rel not in new:
+                errors.append(f"{rel}: corpus files must not be deleted")
+            else:
+                errors += mod("corpus_mode").check_corpus_file(rel, new[rel], led)
             continue
         if not (uni or dom):
             errors.append(f"{rel}: evolution may only edit SKILL.md, references/writing/, the rule reference "
@@ -1161,6 +1197,29 @@ def main(argv=None):
     s.add_argument("--id", required=True, help="F-xxxx")
     s.add_argument("--note", required=True, help="what was implemented (or why it was declined)")
     s.add_argument("--declined", action="store_true")
+    s = sub.add_parser("corpus-stats", help="style ranges per domain from the exemplar papers")
+    s.add_argument("--domain", help="only this domain")
+    s = sub.add_parser("add-exemplars", help="add verified exemplar passages to the bank")
+    s.add_argument("--paper", help="paper id")
+    s.add_argument("--file", help="JSON list of {kind, section, function, text, why}")
+    s.add_argument("--remove", metavar="PAPER_ID", help="remove every exemplar of this paper")
+    s = sub.add_parser("make-case", help="hold a paper out as an eval case")
+    s.add_argument("--paper", required=True)
+    s.add_argument("--venue", help="venue profile for the eval (default acl)")
+    s.add_argument("--force", action="store_true", help="accept a paper the skill was trained on (biased case)")
+    s = sub.add_parser("eval-task", help="Eval Writer workspace for the current skill")
+    s.add_argument("--case", required=True)
+    s.add_argument("--label", help="name of this skill version in reports (default: git short hash)")
+    s = sub.add_parser("eval-score", help="deterministic graders of one eval run")
+    s.add_argument("--case", required=True)
+    s.add_argument("--eval-run", required=True)
+    s = sub.add_parser("eval-blind", help="blind pack for a Judge, or --reveal its judgment")
+    s.add_argument("--case", required=True)
+    s.add_argument("--eval-runs", help="comma-separated eval run ids")
+    s.add_argument("--no-original", action="store_true", help="leave the published original out of the pack")
+    s.add_argument("--seed", type=int)
+    s.add_argument("--reveal", metavar="BLIND_ID")
+    sub.add_parser("eval-status", help="all eval cases and results")
     s = sub.add_parser("check-edits")
     s.add_argument("--paper", required=True)
     s.add_argument("--iter", type=int, required=True, help="iteration whose review the edits respond to")
@@ -1183,7 +1242,14 @@ def main(argv=None):
           "check-brief": lambda x: fig().cmd_check_brief(x),
           "propose-style": lambda x: fig().cmd_propose_style(x),
           "request-feature": lambda x: fig().cmd_request_feature(x),
-          "resolve-feature": lambda x: fig().cmd_resolve_feature(x)}[a.cmd]
+          "resolve-feature": lambda x: fig().cmd_resolve_feature(x),
+          "corpus-stats": lambda x: mod("corpus_mode").cmd_corpus_stats(x),
+          "add-exemplars": lambda x: mod("corpus_mode").cmd_add_exemplars(x),
+          "make-case": lambda x: mod("eval_mode").cmd_make_case(x),
+          "eval-task": lambda x: mod("eval_mode").cmd_eval_task(x),
+          "eval-score": lambda x: mod("eval_mode").cmd_eval_score(x),
+          "eval-blind": lambda x: mod("eval_mode").cmd_eval_blind(x),
+          "eval-status": lambda x: mod("eval_mode").cmd_eval_status(x)}[a.cmd]
     if a.cmd in ("check-brief", "propose-style", "request-feature"):
         ctx = Ctx(a.workdir, a.run)
         if not is_figure(ctx):

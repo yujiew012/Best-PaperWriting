@@ -59,11 +59,11 @@ Run order: **H → A/B → C/D → F → E → G**. Branch I runs only on reques
 ## 2. Branches (Read → Do → Verify)
 
 ### A. Draft or revise sections
-- **Read** `references/writing/principles_and_style.md`, then only the file for the section at hand:
+- **Read** `references/intake.md`, `references/writing/principles_and_style.md` and `references/writing/claims_and_evidence.md`, then only the file for the section at hand:
 
   | Section | File |
   | :--- | :--- |
-  | Title, abstract, introduction, contributions | `references/writing/abstract_and_introduction.md` |
+  | Title, abstract, introduction, contributions | `references/writing/routing.md` (choose the route first), then `references/writing/abstract_and_introduction.md` |
   | Related work, preliminaries, problem formulation | `references/writing/related_work_and_preliminaries.md` |
   | Method, defense, theoretical guarantees | `references/writing/method_and_guarantees.md` |
   | Evaluation | Branch B |
@@ -71,10 +71,18 @@ Run order: **H → A/B → C/D → F → E → G**. Branch I runs only on reques
 
 - **Domain:** also read the template for the paper's domain, `references/domains/<domain_id>.md` (run Branch H if the domain is unknown). Its §2 paper skeleton and §3 mandatory elements override generic defaults. Rules in its §8 *Provisional rules* are suggestions backed by one exemplar paper.
 - **Do**
-  1. List the facts the section needs (challenges, components, numbers) and where each comes from. Ask for anything missing.
-  2. Follow the file's paragraph skeleton (for example the 7-paragraph introduction or the 5-sentence abstract).
-  3. Keep terminology identical to the rest of the paper.
-- **Verify:** `lint_paper.py` reports 0 errors and no new warnings compared with `lint_before.json` in the text you touched.
+  1. **Intake** (`references/intake.md`): collect the required fields and, in the same single message, ask for the empty memorable ones (insight, closest work, handle, concrete example, what is surprising, efficiency, what it changes). Continue with `[TODO: ...]` for what the user cannot answer. The user can fill `assets/intake_template.md`.
+  2. **Route** (`references/writing/routing.md`): paper type, motivation, tension; this picks the introduction plan, the abstract arc and Figure 1.
+  3. **Claim map** (`claims_and_evidence.md`): write `claim_map.json` (format: `assets/claim_map_example.json`) with each claim's evidence, strength, number roles and the one paragraph that states it; validate with `uv run <skill_dir>/scripts/claim_map.py claim_map.json`.
+  4. **Exemplars**: for each paragraph function, read 2-3 exemplars (`uv run <skill_dir>/scripts/find_exemplars.py intro.gap --domain <domain_id> -n 3`) for structure; never reuse their wording.
+  5. **Draft** following the route's paragraph plan and the claim map. Keep terminology identical to the rest of the paper.
+  6. **Revise mode** (the user gave existing text): decompose it into the intake fields first (present / vague / missing), then deliver a sentence-level change table instead of a diff: `uv run <skill_dir>/scripts/change_table.py old.tex new.tex --section abstract --reasons reasons.json --out changes.md`. Apply only the rows the user accepts (rule 7).
+  7. **Author report**: `uv run <skill_dir>/scripts/make_report.py --claims claim_map.json --tex paper/main.tex [--figures figure_plan.json] [--numbers numbers.json] [--lint lint.json] [--style style.json] [--changes changes.md] --out report.md`.
+- **Verify**
+  - `lint_paper.py --venue <venue>` reports 0 errors and no new warnings compared with `lint_before.json` in the text you touched (including W306 boilerplate, W307 workflow traces, W310 exemplar reuse).
+  - `check_numbers.py paper/main.tex --sources <result files> stats.json` reports no UNSUPPORTED number; DERIVED numbers are confirmed in the report.
+  - `claim_map.py claim_map.json --tex paper/main.tex` reports no ERROR.
+  - For the abstract and introduction: `style_metrics.py paper/main.tex --domain <domain_id> --json style.json`; every WARN is fixed or justified in the report. Its ranges come from a domain corpus when one exists (≥ 5 papers), otherwise from a general reference corpus (NOTEs only): aim near the median, never at zero.
 
 ### B. Results → evaluation prose
 - **Read** `references/writing/evaluation.md` and `references/mechanism_sentence_bank.md`. A reusable prompt is in `assets/prompt_templates.md`.
@@ -90,13 +98,14 @@ Run order: **H → A/B → C/D → F → E → G**. Branch I runs only on reques
      - **Evidence:** 1–3 numbers from the hardest setting plus the margin range, all taken from `stats.json`.
      - **Mechanism:** name the component and the operation that explains the result, worded by evidence strength: ablation or controlled intervention → causal wording; probes or correlations → "is consistent with"; no evidence → state it as a hypothesis (`references/writing/evaluation.md` attribution ladder). NEVER call an untested explanation confirmed.
 - **Verify**
-  - Every number in the paragraph appears in `stats.json` or the source file.
+  - `check_numbers.py <tex> --sources results.csv stats.json` reports no UNSUPPORTED number.
   - Every setting listed under `ours_not_best_in` is acknowledged.
   - `lint_paper.py` raises no W303 for the paragraph.
 
 ### C. Figures
-- **Read** `references/figures_and_captions.md` (§1–3). Example inputs are `assets/curves_example.csv`, `assets/ablation_example.csv` and `assets/architecture_example.json`; they are for format reference only.
+- **Read** `references/figures_and_captions.md` (§0–3). Example inputs are `assets/curves_example.csv`, `assets/ablation_example.csv` and `assets/architecture_example.json`; they are for format reference only.
 - **Do**
+  0. **Figure plan** (§0): one row per figure or table, each carrying one claim of the claim map; Figure 1 chosen by route; results figures stay placeholders (`assets/figure_placeholders.tex`) until the data exists. Validate: `uv run <skill_dir>/scripts/figure_plan.py figure_plan.json --claims claim_map.json --tex paper/main.tex` (format: `assets/figure_plan_example.json`).
   1. `check_env.py --for plot`.
   2. Choose the chart type from the selection table in §3.1; pass `--venue` so widths match the venue.
   3. Run the matching script:
@@ -111,9 +120,9 @@ Run order: **H → A/B → C/D → F → E → G**. Branch I runs only on reques
 - **Read** `references/figures_and_captions.md` §4–5.
 - **Do**
   - Figure captions use sentence case; table captions use Title Case (IEEE).
-  - Captions say *what is shown and how to read it*, never the conclusion.
+  - Caption content follows the venue (`venues.json` `caption_content`): `neutral` venues say *what is shown and how to read it*, never the conclusion (W203); `takeaway` venues (NeurIPS, ICML, ICLR) open with a 3-12 word takeaway, then the panels (W204).
   - Generate table `.tex` from data with a script; never copy numbers by hand.
-- **Verify:** `lint_paper.py` reports no E001 and no W201, W202 or W203 for the captions you touched.
+- **Verify:** `lint_paper.py --venue <venue>` reports no E001 and no W201-W204 for the captions you touched.
 
 ### E. Layout and float placement
 - **Read** `references/layout_and_typesetting.md`.
@@ -188,7 +197,8 @@ Look up any reported code in `references/lint_rules.md`. Retry policy: diagnose 
 Before you report completion, run the checks that apply and include their results in your reply:
 
 - [ ] `lint_paper.py --venue <venue> <main.tex>`: 0 errors; no new warnings compared with `lint_before.json` in edited text.
-- [ ] Every new or changed number is listed as **number → source file** (or `stats.json`).
+- [ ] `check_numbers.py` reports no UNSUPPORTED number; every new or changed number is listed as **number → source file** (or `stats.json`).
+- [ ] Sections drafted or revised: `claim_map.py` has no ERROR, `report.md` is delivered (`make_report.py`), and in revise mode the change table was shown before applying.
 - [ ] Figures: `check_figure.py` exits 0, and every script warning is resolved.
 - [ ] Layout touched or text length changed: `layout_check.py --compare` reports no regression, and the page limit holds.
 - [ ] Bibliography touched: `check_bib.py` exits 0, and unverified entries are listed.
@@ -234,8 +244,19 @@ Before you report completion, run the checks that apply and include their result
 | `scripts/layout_check.py` (uses `scripts/floatcheck.sty`, `scripts/check_layout.py`) | Float placement build, check and baseline compare |
 | `scripts/check_bib.py` | Bibliography checks |
 | `scripts/domain_adapter.py`, `scripts/self_evolve.py` | Domain profile; sentence mining |
+| `scripts/check_numbers.py` | Fabrication check: every number in the prose traced to a source file (or a derivation) |
+| `scripts/claim_map.py`, `scripts/figure_plan.py`, `scripts/make_report.py` | Claim map and figure plan validation; the author report |
+| `scripts/style_metrics.py` | Abstract/introduction style metrics against a corpus profile (two-sided) |
+| `scripts/change_table.py` | Sentence-level change table for revisions |
+| `scripts/find_exemplars.py` | Exemplar passages by rhetorical function |
 | `scripts/validate_skill.py` | Maintainers: validate this skill's packaging |
 | `references/lint_rules.md` | Every checker code, with its fix |
+| `references/intake.md`, `assets/intake_template.md` | What to ask before writing; revise mode |
+| `references/writing/routing.md`, `references/writing/claims_and_evidence.md` | Paper type × motivation routes; claim map, number roles, say-it-once |
+| `references/style_corpus/` | Style ranges: `general.json` (reference) and `<domain>.json` built by evolve-paper-skill |
+| `references/exemplars/` | Function-tagged exemplar bank (`functions.json`, `moves.jsonl`, `paragraphs.jsonl`) |
+| `assets/claim_map_example.json`, `assets/figure_plan_example.json`, `assets/figure_placeholders.tex` | Formats for the claim map and figure plan; placeholder macros |
+| `NOTICE.md` | Attribution for adapted ideas and reproduced statistics |
 | `references/venues.json` | Venue profiles: widths, caption case, required sections, page limits, class files |
 | `references/figure_styles/` | Per-domain diagram style profiles (`<domain>.json`: base + provisional values) and their allowed ranges (`_bounds.json`) |
 | `references/domains/` | Standardized per-domain templates (skeleton, mandatory elements, evaluation protocol, rejection risks, provisional rules) |

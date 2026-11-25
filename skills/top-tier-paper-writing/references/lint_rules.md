@@ -13,12 +13,18 @@
 | W101 | warn | 浮动体从未在正文被引用 | 在讨论它的句子中引用；若无处讨论，询问用户是否删除（删除需确认） |
 | W201 | warn | 图 Caption 像 Title Case | 改为 Sentence case：仅首词与专有名词大写 |
 | W202 | warn | 表 Caption 像 Sentence case（IEEE 要求 Title Case） | 实词首字母大写；ACM 等用 sentence case 的会议改用 `--caption-style sentence` |
-| W203 | warn | Caption 中下结论 | 删除结论性措辞，把结论移到正文 |
+| W203 | warn | `neutral` 会议的 Caption 中下结论（会议由 `venues.json` 的 `caption_content` 决定） | 删除结论性措辞，把结论移到正文 |
 | W301 | warn | 负 `\vspace` / `\vskip` / `\enlargethispage` | 删除，改用 `layout_and_typesetting.md` §3 的修复阶梯；用户坚持保留时记录原因 |
 | W302 | warn | 模糊/防御性措辞 | 删除或替换为具体数字与事实（见 `writing/principles_and_style.md` §3） |
 | W303 | warn | 段落堆砌数字 | 改写为“总—分—归因”：保留最难任务的 1–3 个数字与领先区间（见 `writing/evaluation.md` §2.6.4） |
 | W304 | warn | `Fig. \ref` 使用可断行空格 | 改为 `Fig.~\ref{...}` |
 | W305 | warn | 过度断言（*proves, conclusively, confirms that, undoubtedly* …，形式化证明环境除外） | 按 `writing/evaluation.md` 的归因证据阶梯改写：有消融/对照才用因果措辞，只有相关证据用 *is consistent with*，否则写成假设 |
+| W204 | warn | `takeaway` 会议（NeurIPS/ICML/ICLR）Caption 首句超过 20 词 | 首句改为 3–12 词的要点句，再逐面板说明（见 `figures_and_captions.md` §0） |
+| W306 | warn | 套话/机器腔（*has attracted increasing attention*, *delve*, *pivotal*, *seamlessly*, *simple yet effective* …） | 换成具体事实：谁、在什么条件下、差多少 |
+| W307 | warn | 工作流痕迹（*supplied*, *the provided results*, *according to the notes*, `[intro.gap]` 之类的标签、箭头 →） | 以作者口吻重写，删除标签；正文不提“给定的输入” |
+| W308 | warn | *Unlike X, we …*（拿方法和作者比较） | 改为 *Unlike X, our method …* |
+| W309 | warn | *although …, but …* | 删掉 *but* |
+| W310 | warn | 与范例库（`references/exemplars/`）共享 ≥ 6 个连续词 | 范例只学结构与节奏，重写该句 |
 | W401 | warn | 摘要不在 150–250 词 | 按 5 句骨架增删（见 `writing/abstract_and_introduction.md`） |
 | W402 | warn | 结论不在 120–200 词 | 两段式：总结 + 具体的未来方向（见 `writing/discussion_conclusion_ethics.md`） |
 | W403 | warn | 会议要求的章节缺失（`--venue`，如 ACL 的 Limitations） | 按 `references/venues.json` 中该会议的 `required_sections` 补上 |

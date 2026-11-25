@@ -1,0 +1,95 @@
+{
+  "_comment": "Format reference only (a fictitious paper). Copy, then replace every claim with your own.",
+  "paper_type": "L1",
+  "motivation": "failure",
+  "tension": "tradeoff",
+  "handle": "transcribe, then judge",
+  "closest_work": [
+    {
+      "name": "Prompt-level safety filters",
+      "difference": "they judge the image directly; we judge the transcription"
+    }
+  ],
+  "claims": [
+    {
+      "id": "C1",
+      "kind": "gap",
+      "text": "Safety refusals collapse when the rendered text is degraded but still legible.",
+      "strength": "show",
+      "evidence": [
+        "Tab. 1",
+        "Fig. 3"
+      ],
+      "where": "intro:P2",
+      "abstract": true,
+      "experiment": "Tab. 1",
+      "settings": 4
+    },
+    {
+      "id": "C2",
+      "kind": "insight",
+      "text": "Reading degraded text and judging its intent compete for the same capacity.",
+      "strength": "observe",
+      "evidence": [
+        "Fig. 4"
+      ],
+      "where": "intro:P3",
+      "abstract": true,
+      "experiment": "Fig. 4"
+    },
+    {
+      "id": "C3",
+      "kind": "method",
+      "text": "A two-stage prompt separates transcription from the safety decision.",
+      "strength": "show",
+      "evidence": [
+        "Sec. 4"
+      ],
+      "where": "intro:P4",
+      "abstract": true,
+      "method_section": "4.1"
+    },
+    {
+      "id": "C4",
+      "kind": "result",
+      "text": "The defense restores refusals on four models without hurting OCR accuracy.",
+      "strength": "show",
+      "evidence": [
+        "Tab. 3"
+      ],
+      "where": "intro:P5",
+      "abstract": true,
+      "experiment": "Tab. 3",
+      "ablation": "Tab. 4",
+      "settings": 4
+    },
+    {
+      "id": "C5",
+      "kind": "result",
+      "text": "The separation, not the extra tokens, causes the gain.",
+      "strength": "causal",
+      "evidence": [],
+      "todo": "ablation: same token budget without separation",
+      "where": "intro:P5",
+      "experiment": "Tab. 4",
+      "ablation": "Tab. 4"
+    }
+  ],
+  "numbers": [
+    {
+      "value": "43.2%",
+      "role": "headline",
+      "claim": "C1"
+    },
+    {
+      "value": "5.1%",
+      "role": "headline",
+      "claim": "C4"
+    },
+    {
+      "value": "0.92",
+      "role": "supporting",
+      "claim": "C2"
+    }
+  ]
+}

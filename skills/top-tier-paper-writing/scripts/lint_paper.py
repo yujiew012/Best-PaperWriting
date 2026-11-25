@@ -14,12 +14,18 @@ Follows \\input / \\include / \\subfile from the main file and reports:
   W101  float label never referenced in the text                            warning
   W201  figure caption looks like Title Case (IEEE: sentence case)          warning
   W202  table caption looks like sentence case (IEEE: Title Case)           warning
-  W203  caption states a conclusion ("outperforms", "shows that", ...)       warning
+  W203  caption states a conclusion ("outperforms", ...) (venues with neutral captions)   warning
+  W204  caption's first sentence > 20 words (venues with takeaway-first captions)    warning
   W301  negative \\vspace / \\vskip or \\enlargethispage used to squeeze layout warning
   W302  vague or hedging phrase ("we hope", "very", "clearly", ...)          warning
   W303  paragraph quotes >= N numbers (reads the table instead of analysing) warning
   W304  "Fig. \\ref" with a breakable space (use Fig.~\\ref)                  warning
   W305  overclaiming verb (proves, conclusively, confirms that, ...) outside a formal proof warning
+  W306  boilerplate / machine-written tell ("has attracted increasing attention", "delve", ...) warning
+  W307  workflow trace left in the text ("supplied", "the provided results", move labels) warning
+  W308  "Unlike X, we ..." compares a method with the authors                  warning
+  W309  "although ..., but ..."                                              warning
+  W310  copies a run of >= 6 words from the exemplar bank (references/exemplars/) warning
   W401  abstract length outside 150-250 words                               warning
   W402  conclusion length outside 120-200 words                             warning
   W403  a section the venue requires is missing (--venue, e.g. ACL Limitations) warning
@@ -27,7 +33,7 @@ Follows \\input / \\include / \\subfile from the main file and reports:
     uv run lint_paper.py paper/main.tex
     uv run lint_paper.py paper/main.tex --caption-style sentence --json lint.json
     uv run lint_paper.py paper/main.tex --disable W302,W304 --strict
-    uv run lint_paper.py paper/main.tex --venue acl     # caption case + required sections from the venue
+    uv run lint_paper.py paper/main.tex --venue acl     # caption case/content + required sections from the venue
 
 Exit codes: 0 no errors (warnings allowed unless --strict), 1 errors, 2 usage error.
 Rule rationale and fixes: references/lint_rules.md.
@@ -54,6 +60,20 @@ OVERCLAIM = [
 CONCLUSION_WORDS = [
     r"\boutperform\w*", r"\bsuperior\b", r"\bdemonstrat\w+", r"\bshows? that\b", r"\bclearly\b",
     r"\bsignificantly (?:better|higher|lower|worse)\b", r"\bbetter than\b", r"\bproves?\b", r"\bbeats?\b",
+]
+BOILERPLATE = [
+    r"(?:has|have) attracted (?:increasing|growing|much|more and more) attention", r"\bhot topic\b",
+    r"plays? an? (?:important|vital|key|crucial|significant|pivotal) role(?=\s*(?:in [^.,;]*)?[.;])",
+    r"extensive experiments (?:demonstrate|show|verify|validate) the (?:effectiveness|superiority)",
+    r"\bdelv(?:e|es|ing)\b", r"\bpivotal\b", r"\bparadigm shift\b", r"unlock(?:s|ing)? the (?:full )?potential",
+    r"\bseamless(?:ly)?\b", r"\ba myriad of\b", r"\bin the realm of\b", r"\bsimple yet effective\b",
+    r"\bcomprehensive experiments\b", r"\bthe landscape of\b", r"\bin today'?s (?:world|era)\b",
+]
+WORKFLOW = [
+    r"\bsupplied\b", r"\bthe provided (?:results|numbers|data|evaluation|facts|materials?)\b",
+    r"\bthe reported (?:evaluation|results|experiments)\b", r"\baccording to the (?:user|notes|input|materials)\b",
+    r"\[(?:intro|abstract|relwork|method|exp|eval)\.[a-z.-]+\]", r"\b(?:Paragraph|Para\.) \d+:",
+    r"(?<!\$)→(?![^$]*\$)",
 ]
 SMALL_WORDS = {"a", "an", "the", "and", "but", "or", "nor", "for", "so", "yet", "as", "at", "by", "in", "of",
                "on", "to", "up", "via", "vs", "per", "with", "from", "into", "over", "than", "under"}
@@ -171,7 +191,23 @@ def caption_case_issue(text, kind):
     return ratio >= 0.6 if kind == "title-in-figure" else ratio <= 0.4
 
 
-def run(main_tex, caption_style, num_threshold, disabled, required_sections=()):
+def exemplar_grams(n=6):
+    """6-grams of every quote in references/exemplars/*.jsonl (the draft must not reuse them)."""
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "references", "exemplars")
+    grams = set()
+    for name in ("moves.jsonl", "paragraphs.jsonl"):
+        p = os.path.join(d, name)
+        if not os.path.exists(p):
+            continue
+        with open(p, encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    w = re.findall(r"[a-z0-9]+", json.loads(line).get("text", "").lower())
+                    grams |= {" ".join(w[i:i + n]) for i in range(len(w) - n + 1)}
+    return grams
+
+
+def run(main_tex, caption_style, num_threshold, disabled, required_sections=(), caption_content="neutral"):
     root = os.path.dirname(os.path.abspath(main_tex))
     doc = Doc(load(main_tex), root)
     text = doc.text
@@ -227,11 +263,18 @@ def run(main_tex, caption_style, num_threshold, disabled, required_sections=()):
                     add("W202", off, "table caption looks like sentence case; IEEE tables use Title Case")
             elif caption_style == "sentence" and caption_case_issue(cap_text, "title-in-figure"):
                 add("W201", off, f"{kind} caption looks like Title Case; this venue uses sentence case")
-            for pat in CONCLUSION_WORDS:
-                w = re.search(pat, plain(cap_text), re.I)
-                if w:
-                    add("W203", off, f"caption states a conclusion ('{w.group(0)}'); keep conclusions in the text")
-                    break
+            if caption_content == "neutral":
+                for pat in CONCLUSION_WORDS:
+                    w = re.search(pat, plain(cap_text), re.I)
+                    if w:
+                        add("W203", off, f"caption states a conclusion ('{w.group(0)}'); this venue keeps "
+                                         f"conclusions in the text")
+                        break
+            else:
+                first = re.split(r"(?<=[.!?])\s+", plain(cap_text).strip(), maxsplit=1)[0]
+                if len(first.split()) > 20:
+                    add("W204", off, f"first caption sentence has {len(first.split())} words; open with a "
+                                     f"takeaway of 3-12 words, then describe the panels")
 
     for lab, pos in refs.items():
         if lab not in labels and not lab.startswith("#"):
@@ -255,6 +298,33 @@ def run(main_tex, caption_style, num_threshold, disabled, required_sections=()):
             add("W305", body_start + m.start(), f"overclaiming '{m.group(0)}': match the wording to the evidence "
                                                 "(ablation -> causal; correlation -> 'is consistent with'; "
                                                 "none -> hypothesis)")
+    for pat in BOILERPLATE:
+        for m in re.finditer(pat, body, re.I):
+            add("W306", body_start + m.start(), f"boilerplate '{m.group(0)}': say the specific fact instead")
+    for pat in WORKFLOW:
+        for m in re.finditer(pat, body):
+            add("W307", body_start + m.start(), f"workflow trace '{m.group(0)}': write as the authors, without "
+                                                f"move labels or references to the inputs you were given")
+    for m in re.finditer(r"\bUnlike [^,.;]{2,80},\s*we\b", body):
+        add("W308", body_start + m.start(), "'Unlike X, we' compares a method with the authors; write "
+                                            "'Unlike X, our method ...'")
+    for m in re.finditer(r"\b[Aa]lthough\b[^.;]{0,200},\s*but\b", body):
+        add("W309", body_start + m.start(), "'although ..., but': drop 'but'")
+    bank = exemplar_grams() if "W310" not in disabled else set()
+    if bank:
+        prose = plain(re.sub(r"\\begin\{(" + env_re + r")\}.*?\\end\{\1\}", " ", body, flags=re.S))
+        w = re.findall(r"[a-z0-9]+", prose.lower())
+        hit_at = [i for i in range(len(w) - 5) if " ".join(w[i:i + 6]) in bank]
+        runs, start = [], None
+        for k, i in enumerate(hit_at):                      # merge overlapping 6-grams into runs
+            if start is None:
+                start = i
+            if k + 1 == len(hit_at) or hit_at[k + 1] != i + 1:
+                runs.append(" ".join(w[start:i + 6]))
+                start = None
+        for r in runs[:10]:
+            add("W310", body_start, f"reuses {len(r.split())} words of an exemplar ('{r[:80]}'); exemplars "
+                                    f"teach structure only")
     for m in re.finditer(r"\b(Fig\.|Figs\.|Figure|Table|Tables|Section|Sec\.|Eq\.|Algorithm|Appendix) "
                          r"\\(?:ref|cref|autoref)\{", body):
         add("W304", body_start + m.start(), f"use '{m.group(1)}~\\ref' (non-breaking space)")
@@ -308,6 +378,9 @@ def main(argv=None):
                          "(default: from --venue, else ieee)")
     ap.add_argument("--venue", help="venue profile from references/venues.json: sets the caption style and the "
                                     "required sections")
+    ap.add_argument("--caption-content", choices=["neutral", "takeaway"],
+                    help="neutral: no conclusions in captions (W203); takeaway: captions open with the takeaway "
+                         "(W204). Default: from --venue, else neutral")
     ap.add_argument("--numbers", type=int, default=6, help="W303 threshold (numbers per paragraph)")
     ap.add_argument("--disable", default="", help="comma-separated codes to skip, e.g. W302,W304")
     ap.add_argument("--strict", action="store_true", help="exit 1 on warnings too")
@@ -318,7 +391,7 @@ def main(argv=None):
         print(f"[error] not found: {args.main_tex}", file=sys.stderr)
         return 2
 
-    style, required = args.caption_style, ()
+    style, required, content = args.caption_style, (), args.caption_content
     if args.venue:
         vpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "references", "venues.json")
         with open(vpath, encoding="utf-8") as f:
@@ -328,12 +401,13 @@ def main(argv=None):
             return 2
         v = venues[args.venue]
         required = v.get("required_sections", [])
+        content = content or v.get("caption_content", "neutral")
         if style is None:
             case = v.get("caption_case", {})
             style = ("off" if not case.get("figure") else
                      "ieee" if case.get("table") == "title" else "sentence")
     issues = run(args.main_tex, style or "ieee", args.numbers,
-                 {c.strip() for c in args.disable.split(",") if c.strip()}, required)
+                 {c.strip() for c in args.disable.split(",") if c.strip()}, required, content or "neutral")
     errors = [i for i in issues if i["code"].startswith("E")]
     warns = [i for i in issues if i["code"].startswith("W")]
     shown = {}

@@ -1,0 +1,15 @@
+{
+  "_comment": "Format reference only (a fictitious paper). One row per figure or table; every row carries one claim from claim_map.json.",
+  "figures": [
+    {"id": "fig:teaser", "place": "page 1, full width", "claim": "C1", "type": "diagnosis",
+     "panels": "(a) baseline refuses at high resolution (b) complies at low resolution (c) ours refuses",
+     "material": "three model responses on one benign stand-in prompt", "status": "placeholder",
+     "caption_takeaway": "Lower resolution, weaker refusals."},
+    {"id": "fig:overview", "place": "top of Sec. 4", "claim": "C3", "type": "overview",
+     "panels": "single", "material": "none (schematic of the stated pipeline)", "status": "draw",
+     "caption_takeaway": "Transcribe first, then judge."},
+    {"id": "tab:main", "place": "Sec. 5.2", "claim": "C4", "type": "table",
+     "material": "ASR and OCR accuracy for 4 models x 3 resolutions", "status": "done",
+     "caption_takeaway": "The defense restores refusals without hurting OCR."}
+  ]
+}

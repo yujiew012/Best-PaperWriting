@@ -1,0 +1,13 @@
+%% Figure placeholders that carry their plan (references/figures_and_captions.md §0).
+%% Copy next to main.tex and \input{figure_placeholders} in the preamble (before \begin{document}).
+%%   \begin{figure}[t]\centering
+%%     \FigPlaceholder{\linewidth}{4cm}
+%%     \caption{\FigPlan{claim C4; grid 3 inputs x 4 methods; needs renders of A, B, C}Ours keeps ...}
+%%     \label{fig:qual}
+%%   \end{figure}
+%% figure_plan.py --tex lists every placeholder still in the paper; remove them before submission.
+\RequirePackage{xcolor}
+\providecommand{\FigPlaceholder}[2]{%
+  \fbox{\parbox[c][#2][c]{\dimexpr#1-2\fboxsep-2\fboxrule\relax}{\centering\small\color{gray}%
+  Figure placeholder (see caption)}}}
+\providecommand{\FigPlan}[1]{\textcolor{red}{[Figure plan: #1]}~}
