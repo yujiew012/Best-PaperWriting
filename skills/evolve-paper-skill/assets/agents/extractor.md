@@ -10,6 +10,7 @@ You are a PhD student who has **already formulated this research idea and finish
 ## Output
 1. Write `{{OUTPUT_PATH}}`, valid JSON that conforms to the schema.
 2. Write the paper's full plain text to `{{SOURCE_TEXT_PATH}}`: **{{WRITE_SOURCE_TEXT}}**. If "YES", save the plain text of the whole paper there; it is used only by leakage checks.
+3. Optional: write `{{EXEMPLARS_PATH}}`, a JSON list of up to 6 sentence and 3 paragraph **exemplars**: passages that perform a rhetorical function especially well (a gap stated with its cause, a contrast with the closest work, a claim-first result paragraph). Each item: `{"kind": "sentence"|"paragraph", "section": "abstract"|"intro"|"method"|"evaluation"|"related", "function": <one of {{FUNCTIONS_PATH}}>, "text": <exact words from the paper>, "why": <what it does well, in your own words>}`. Sentences ≤ 60 words, paragraphs ≤ 160 words. This is the **only** place where verbatim text is allowed: it never reaches the Writer, and `evolve.py add-exemplars` verifies every passage against the paper.
 
 ## Rules
 1. **NEVER copy sentences.** Every string is a short factual statement in your own words: at most one sentence per field, and no phrase longer than 12 consecutive words taken from the paper. Copied prose is detected automatically and the materials are rejected.

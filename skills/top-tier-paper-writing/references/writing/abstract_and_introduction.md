@@ -1,5 +1,7 @@
 # Title / Abstract / Introduction
 
+> **先选路线**：`writing/routing.md` 决定论文类型（L1–L8）、动机与张力，并给出对应的引言段落计划与摘要顺序。本文件的 7 段引言与 5 句摘要是 `failure` 路线（有两个技术挑战的方法/防御论文）的计划；其他路线以 `routing.md` 的计划为准。写作前先建 claim map（`writing/claims_and_evidence.md`）：每个论点只在一个段落出现，数字按 headline / supporting / table 分配。
+
 > 适用：起草或重写标题、摘要、引言与贡献列表。
 
 ## 2.0 Title & Abstract（标题与摘要：对称性与黄金骨架）

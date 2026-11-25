@@ -16,7 +16,7 @@ You are the **main agent (orchestrator)**. You run three roles per paper and per
 1. **Generalize, never memorize.** Follow `references/anti_overfitting.md`. A single paper may only add *provisional* rules to its domain template. Universal rules need papers from ≥ 2 domains.
 2. **Information barrier.** The Writer NEVER sees the source paper or its title. Give the Writer only the task file `evolve.py task --role writer` produces. Leakage is measured; a leaking draft is invalid.
 3. **The script decides; you do not override it.** Use `evolve.py` for workspaces, validation, scores, keep/revert, rule status and edit checks. NEVER edit `evolution_ledger.json` or files under `.evolution/` by hand.
-4. **Edit scope.** Edit only `<skill>/SKILL.md`, `<skill>/references/writing/`, the rule references and `<skill>/references/domains/`; in figure mode `propose-style` also writes `<skill>/references/figure_styles/<domain>.json`. NEVER edit scripts, assets, taxonomies or `_bounds.json`; propose those changes to the user in the final report (generator gaps: `request-feature`).
+4. **Edit scope.** Edit only `<skill>/SKILL.md`, `<skill>/references/writing/`, the rule references and `<skill>/references/domains/`; in figure mode `propose-style` also writes `<skill>/references/figure_styles/<domain>.json`. `add-exemplars` and `corpus-stats` write `<skill>/references/exemplars/*.jsonl` and `<skill>/references/style_corpus/<domain>.json`; never edit those by hand either. NEVER edit scripts, assets, taxonomies or `_bounds.json`; propose those changes to the user in the final report (generator gaps: `request-feature`).
 5. **Data hygiene.** Papers, materials and drafts stay in `.evolution/` (git-ignored). NEVER commit them or copy paper text into the skill.
 6. **Human-in-the-loop gates.** STOP and ask the user:
    - before starting, confirming the papers, iterations and sub-agent count printed by `init`;
@@ -96,6 +96,22 @@ evolve.py init --mode figure --skill <skill> --paper paper.pdf --iterations N [-
 
 Style values move into the profile's `base` only when a second paper asks for the same value. A conflicting value from another paper is counter-evidence and restores the earlier value. Each paper may back ≤ 3 style changes per iteration and ≤ 6 in total.
 
+## 3C. Corpus: style ranges and exemplars
+
+After a paper's materials pass `check-materials` (training papers only):
+
+- **Exemplars.** If the Extractor wrote `.evolution/papers/<id>/exemplars.json`, run `evolve.py add-exemplars --paper <id> --file .evolution/papers/<id>/exemplars.json`. The script keeps only passages found verbatim in the paper, within the length limits and at most 6 sentence and 3 paragraph exemplars per paper, and records the source. Writers never see exemplars of the paper they rewrite. Remove a paper's passages with `add-exemplars --remove <id>`.
+- **Style ranges.** At the end of a run, `evolve.py corpus-stats` computes the abstract/introduction style metrics of every cached paper and writes `<skill>/references/style_corpus/<domain>.json` (numbers only). `style_metrics.py` uses a domain profile as a target from 5 papers on; until then it uses the general reference corpus and reports NOTEs only.
+
+## 3E. Held-out evaluation (does the skill actually improve?)
+
+Training scores are measured on the papers the skill learned from. To measure real improvement, keep **eval cases**: papers the skill never trains on.
+
+1. `evolve.py make-case --paper <id>` (needs validated materials). The paper is marked `eval`: `init`, `propose`, `corpus-stats` and `add-exemplars` refuse it from then on. A paper that already backs rules is refused unless `--force` (the case is then labelled biased).
+2. For each skill version to compare (e.g. before and after a run): `evolve.py eval-task --case <id> --label <name>`, then a fresh **Eval Writer** sub-agent on the printed task file (abstract + introduction only), then `evolve.py eval-score --case <id> --eval-run <run>`. Deterministic graders: sections present, every number traced to the materials, no lint errors or workflow traces, number budget, no memorized text from the original.
+3. `evolve.py eval-blind --case <id> --eval-runs <run1>,<run2>` builds an anonymized pack with the published original's abstract and introduction mixed in. Give a fresh **Judge** sub-agent only the printed `JUDGE_TASK.md` (never `key.json`). Then `evolve.py eval-blind --case <id> --reveal <blind_id>` maps the letters back and records the ranking (`references/eval_rubric.md`, 8 dimensions + case graders).
+4. `evolve.py eval-status` shows every case over time. Report it with `finalize`. A run that makes eval scores worse is a regression even when training scores rose.
+
 ## 4. Finish
 
 1. Run `evolve.py finalize`. It promotes or retires rules based on accumulated evidence and writes `report.md`; it also appends to `<skill>/EVOLUTION_LOG.md`.
@@ -119,6 +135,8 @@ Style values move into the profile's `base` only when a second paper asks for th
 - [ ] `finalize` ran; `report.md` and `EVOLUTION_LOG.md` are updated.
 - [ ] `validate_skill.py` on the target skill: 0 errors.
 - [ ] Figure mode: the gold crop was viewed, and every `style_parameter` / `generator_limitation` gap went through `propose-style` / `request-feature`, not hand edits.
+- [ ] Exemplars proposed by the Extractor went through `add-exemplars`; `corpus-stats` ran after the last paper.
+- [ ] When eval cases exist: the new skill version was run on them (`eval-task` → `eval-score`, and `eval-blind` against the previous version) and the result is in the report.
 - [ ] Holdout run done, or the reason it was skipped is stated (e.g. first paper ever).
 - [ ] The user has seen the diff and decided keep or discard.
 
@@ -132,5 +150,8 @@ Style values move into the profile's `base` only when a second paper asks for th
 | `assets/agents/fig_extractor.md`, `assets/agents/illustrator.md`, `assets/agents/critic.md` | Figure-mode role prompts |
 | `assets/schemas/figure_brief.schema.json`, `assets/schemas/figure_review.schema.json` | Output contracts for the Figure Extractor and the Critic |
 | `references/figure_rubric.md` | Scoring anchors used by the Critic |
+| `scripts/corpus_mode.py`, `scripts/eval_mode.py` | Corpus (style ranges, exemplars) and held-out evaluation internals; called through `evolve.py` |
+| `assets/agents/eval_writer.md`, `assets/agents/judge.md` | Eval Writer and blind Judge prompts |
+| `references/eval_rubric.md` | Blind-comparison rubric (8 dimensions) |
 | `references/anti_overfitting.md` | Scope ladder, generalization tests, root cause → edit type, budgets |
 | `references/review_rubric.md` | Scoring anchors used by the Reviewer |

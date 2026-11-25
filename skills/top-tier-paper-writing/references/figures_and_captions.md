@@ -5,6 +5,22 @@
 
 ---
 
+## 0. 先做图表计划（Figure plan），再画图
+
+画任何图之前，先从 claim map（`writing/claims_and_evidence.md`）生成图表计划 `figure_plan.json`（格式见 `assets/figure_plan_example.json`），并校验：
+
+```bash
+uv run <skill_dir>/scripts/figure_plan.py figure_plan.json --claims claim_map.json --tex paper/main.tex --md figure_plan.md
+```
+
+- **一图一论点**：每一行（图或表）只承载 claim map 中的一个 claim，先写好 Caption 的要点句（`caption_takeaway`）再动手画；承载不了任何 claim 的图移到附录。每个 gap / result / advantage 类 claim 都必须有图或表。
+- **状态**：`draw` 只用于用户已说明机制的示意图（架构图、流程、威胁模型）；凡是展示结果的图（曲线、渲染、示例输出、数值）在用户提供数据前一律是 `placeholder`，**NEVER** 编造结果图、曲线或数值。占位图用 `assets/figure_placeholders.tex` 的 `\FigPlaceholder{宽}{高}`，并把计划写进 Caption：`\caption{\FigPlan{claim C4; 需要 ...}...}`；`figure_plan.py --tex` 会列出所有残留占位，投稿前必须清零。
+- **`material`**：写清楚缺什么（哪些场景、哪些基线、哪个指标与坐标轴）。计划表进入作者报告（`make_report.py`）。
+- **Figure 1 按路线选**（`writing/routing.md` §3）：`failure` → 基线失败、本文修复的诊断图；`cost` → 旧机制与本文机制对照并标出代价；`capability-gap` → 真实输入到输出的展示图；L3/L4 → 标注规律或反转的曲线；L7 → 资源本身与规模；L8 → 被测现象。`figure_plan.py` 会提示不匹配。
+- **Caption 风格随会议**（`venues.json` 的 `caption_content`）：`neutral`（IEEE、ACM、USENIX、ACL、LNCS）——Caption 只描述、不下结论（W203）；`takeaway`（NeurIPS、ICML、ICLR）——首句是 3–12 词的要点句（如 *"Lower resolution, weaker refusals."*），随后说明各面板与读法（W204 检查首句长度）。
+
+---
+
 ## 1. 硬性规则
 
 1. **MUST** 使用真实实验数据作图；图中每个数字都能追溯到结果文件（在 LaTeX 源码注释中写明出处）。**NEVER** 用示例数据（`assets/*_example.*`、`--demo`）生成论文插图。
@@ -157,7 +173,7 @@ uv run <skill_dir>/scripts/check_figure.py --venue acl fig_*.pdf
 
 - 大小写随会议（§3.3 表格）：IEEE 图用 Sentence case、表用 Title Case；ACL/NeurIPS/ICML 等图表都用 Sentence case。`lint_paper.py --venue <venue>` 按会议检查（W201/W202）。
 - Caption 只说明：展示了什么、坐标轴与图例含义、数据集与模型（如 *"CIFAR-10 (CNN)"*）、统计口径（如 *"mean ± std over three seeds"*）、攻击注入轮次、虚实线含义。
-- **NEVER** 在 Caption 中下结论（*outperforms*, *superior*, *demonstrates*, *shows that*, *clearly*, *significantly better*）；结论留给正文。`lint_paper.py` 会检查（W203）。
+- 结论是否进 Caption 由会议的 `caption_content` 决定（§0）：`neutral` 会议 **NEVER** 在 Caption 中下结论（*outperforms*, *superior*, *demonstrates*, *shows that*, *clearly*, *significantly better*），结论留给正文（W203）；`takeaway` 会议以一句要点开头，但要点必须有图中数据支撑，且不用 *significantly* 之类的强化词（W204 检查首句长度）。
 - `\label` 必须放在 `\caption` 之后，否则编号错误（E001）。
 
 ### 5.2 示例

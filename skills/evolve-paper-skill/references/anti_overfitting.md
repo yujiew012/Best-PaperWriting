@@ -65,3 +65,9 @@ A figure is judged on what it communicates, not on whether it looks like the ori
 4. **Budgets.** ≤ 3 style changes per iteration and ≤ 6 per paper. A value reverted in a run cannot be proposed again in that run.
 5. **Deterministic floor.** A figure that renders with more layout issues or lower brief coverage than the best earlier iteration is reverted, whatever the Critic's score.
 
+## 7. Corpus and held-out evaluation
+
+- **Style ranges are descriptive.** `corpus-stats` stores numbers only, per domain. A domain profile becomes a target only from 5 papers on; below that, and for the general reference corpus, style findings are NOTEs. A rule that pushes a metric to zero is wrong by construction (two-sided ranges).
+- **Exemplars teach structure, not wording.** At most 6 sentences and 3 paragraphs per paper, verified verbatim and attributed; `lint_paper.py` W310 flags any 6-word run a draft shares with the bank, and a Writer never sees exemplars of the paper it rewrites.
+- **Eval cases stay unseen.** A paper registered with `make-case` cannot back rules, style ranges or exemplars. Judge the skill by its eval cases, not by the training papers: training scores rise by construction.
+

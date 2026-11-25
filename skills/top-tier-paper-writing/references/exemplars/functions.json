@@ -1,0 +1,52 @@
+{
+  "$comment": "Rhetorical functions an exemplar can be tagged with, per section. Used by find_exemplars.py and evolve.py add-exemplars.",
+  "abstract": {
+    "setting": "what works today, concretely",
+    "gap": "what fails or is missing, when, and why",
+    "insight": "the observation the method follows from",
+    "method": "the method named with its category and its one idea",
+    "result": "headline result with benchmark/baseline",
+    "stance": "what the work changes for the field",
+    "release": "code / data / artifact release"
+  },
+  "intro": {
+    "scene": "a concrete case the reader can picture",
+    "task": "the task in operational terms and why it matters",
+    "credit": "specific achievements of prior work, before criticizing it",
+    "gap": "the observable limitation and the condition under which it appears",
+    "reason": "the technical cause of the gap ('The main reason is ...')",
+    "tension": "two goals that pull apart, or an obvious fix that is too costly",
+    "question": "the open question the paper asks",
+    "insight": "the observation about the problem, stated directly",
+    "goal": "the goal phrased as a mechanism",
+    "method": "the method and how its parts depend on each other",
+    "contrast": "the closest work and one checkable difference",
+    "evidence": "a calibrated result sentence with scope",
+    "stance": "what the work changes for the field",
+    "scope": "what the paper does and does not address",
+    "contribution": "the contributions, each verifiable",
+    "transition": "a turn between paragraphs without a logical connector"
+  },
+  "method": {
+    "opener": "input, output and components, pointing to the overview figure",
+    "need": "the problem a component solves, before its mechanism",
+    "mechanism": "what the component computes",
+    "property": "why it works / what it guarantees",
+    "delta": "what stays the same as the base method",
+    "rule-out": "the obvious alternative and why it fails"
+  },
+  "evaluation": {
+    "opener": "what is evaluated, or the questions the experiments answer",
+    "setup": "datasets, metrics, baselines and how they were run",
+    "claim-first": "a result paragraph that opens with the finding",
+    "mechanism": "the result explained by a component and its operation",
+    "ablation": "one ablation answering one design question",
+    "bounded-claim": "a result stated with its scope or exception",
+    "limitation": "a concrete failure mode with its cause"
+  },
+  "related": {
+    "contrast": "a line of work and how this paper differs",
+    "closest": "the closest work and the checkable difference",
+    "complementary": "work that is orthogonal and could be combined"
+  }
+}

@@ -23,11 +23,12 @@ Written from the perspective of a senior PhD researcher and reviewer with severa
 
 1. **Domain templates.** Identify the paper's area (security & privacy, LLM/agent security, federated learning algorithms, systems, NLP/LLM) and apply that area's standardized template: paper skeleton, mandatory elements, evaluation protocol.
 2. **Academic figures.** Modern-minimal architecture diagrams with numbered steps ①–⑥, and data plots with the colorblind-safe Okabe-Ito palette at exact single- or double-column widths (3.4 / 6.9 in).
-3. **Captions.** Sentence case for figures and Title Case for tables; captions describe, they never conclude.
-4. **Prose.** Introductions built on paired challenges, real-world cases and insights; results paragraphs as claim → evidence → mechanism, never reading the table aloud.
-5. **Two-column layout.** Three rules for float placement, checked automatically with `floatcheck.sty` + `check_layout.py`.
-6. **Self-evolution.** The companion `evolve-paper-skill` improves the skill from exemplar papers with three sub-agents (Extractor → Writer → Reviewer); an evidence ledger prevents overfitting. A figure mode evolves the architecture-diagram rules and per-domain diagram styles the same way (Figure Extractor → Illustrator → Critic).
-7. **Revision and submission.** Backward-consistency pass after new experiments, multi-source bibliography verification, arXiv versions and journal extensions.
+3. **Captions.** Case and content follow the venue: descriptive captions for IEEE/ACM/ACL/USENIX, takeaway-first captions for NeurIPS/ICML/ICLR.
+4. **Prose.** Introductions routed by paper type and motivation (method, capability, measurement, theory, dataset, ...), built from a claim map in which every claim has its evidence, its wording strength and exactly one paragraph; results paragraphs as claim → evidence → mechanism, never reading the table aloud.
+5. **Checks against fabrication and machine prose.** Every number in the text is traced to a source file (`check_numbers.py`); boilerplate, workflow traces and exemplar reuse are flagged; abstract and introduction style is compared, in both directions, with a corpus of the paper's area; revisions come as a sentence-level change table, and every draft ships with an author report (claims, TODOs, figure plan, Limitations notes).
+6. **Two-column layout.** Three rules for float placement, checked automatically with `floatcheck.sty` + `check_layout.py`.
+7. **Self-evolution.** The companion `evolve-paper-skill` improves the skill from exemplar papers with three sub-agents (Extractor → Writer → Reviewer); an evidence ledger prevents overfitting. A figure mode evolves the architecture-diagram rules and per-domain diagram styles the same way (Figure Extractor → Illustrator → Critic). Held-out eval cases with a blind comparison against the published original measure whether a new skill version is actually better.
+8. **Revision and submission.** Backward-consistency pass after new experiments, multi-source bibliography verification, arXiv versions and journal extensions.
 
 See [`skills/top-tier-paper-writing/SKILL.md`](skills/top-tier-paper-writing/SKILL.md) for the full procedure and [`skills/evolve-paper-skill/SKILL.md`](skills/evolve-paper-skill/SKILL.md) for the evolution loop.
 
@@ -106,6 +107,11 @@ skills/top-tier-paper-writing/
 │   ├── layout_check.py           # one command: diagnostic build + float checks + baseline compare
 │   ├── check_layout.py, floatcheck.sty  # float position recording and analysis
 │   ├── check_bib.py              # .bib checks: duplicates, missing fields, unbraced acronyms, preprints, missing citations
+│   ├── check_numbers.py          # fabrication check: every number in the prose traced to a source file
+│   ├── claim_map.py, figure_plan.py, make_report.py  # claim map and figure plan validation; author report
+│   ├── style_metrics.py          # abstract/introduction style vs. a corpus of the area (two-sided)
+│   ├── change_table.py           # sentence-level change table for revisions
+│   ├── find_exemplars.py         # exemplar passages by rhetorical function
 │   ├── domain_adapter.py         # domain detection and domain profile
 │   ├── self_evolve.py            # candidate sentences from exemplar papers (preview; --apply after review)
 │   └── validate_skill.py         # maintainers: validate the skill's packaging
@@ -119,6 +125,9 @@ skills/top-tier-paper-writing/
 │   ├── revision_and_submission.md# backward consistency, arXiv versions, journal extensions
 │   ├── domain_and_sentence_mining.md
 │   ├── lint_rules.md             # every checker code, its meaning and its fix
+│   ├── intake.md                 # what to ask before writing; revise mode
+│   ├── style_corpus/             # style ranges: general reference + per-domain profiles built by evolution
+│   ├── exemplars/                # function-tagged exemplar bank (filled by evolution)
 │   ├── venues.json               # venue profiles: widths, caption case, required sections, page limits, class files
 │   ├── mechanism_sentence_bank.md, domain_taxonomies.json
 │   └── case_lessons_ieee_sp.md, case_lessons_ieee_tcc.md  # lessons from two real submissions
@@ -129,6 +138,7 @@ skills/evolve-paper-skill/          # for maintainers: evolves the skill above f
 ├── SKILL.md                      # orchestrator SOP: iteration loop, sub-agents, approval gates, Definition of Done
 ├── scripts/evolve.py             # deterministic orchestration: isolated workspaces, validation, leakage checks, scoring, keep/revert, ledger, anti-overfitting guards
 ├── scripts/figure_mode.py        # figure mode: brief checks, gold-figure cropping, coverage, style-profile ledger, feature requests
+├── scripts/corpus_mode.py, eval_mode.py  # style ranges and exemplars; held-out eval cases with blind comparison
 ├── assets/agents/                # role task templates: extractor, writer, reviewer; fig_extractor, illustrator, critic
 ├── assets/schemas/               # contracts for materials, review, figure_brief and figure_review
 └── references/                   # anti_overfitting.md (rule admission ladder), review_rubric.md (8 dims), figure_rubric.md (6 dims)
@@ -221,6 +231,10 @@ All checkers use the same exit codes: 0 = pass, 1 = problems found, 2 = input or
 - New deterministic checks become scripts in `scripts/` (PEP 723 header, `--json`, standard exit codes), and their codes go into `references/lint_rules.md`.
 - The workflow diagram is generated from code. After editing `docs/diagram/build_workflow.py`, run `python3 docs/diagram/build_workflow.py && node docs/diagram/render.js`. The renderer exports `docs/images/workflow.png` at 3× resolution and verifies that no text overflows and no elements overlap; it exits 1 otherwise.
 
+### Acknowledgements
+
+Paper-type routing, the claim map, two-sided style metrics, the figure plan, the exemplar bank and the held-out blind evaluation are adapted from [Best-Paper-Writing-Skill](https://github.com/gulucaptain/Best-Paper-Writing-Skill) (CC BY 4.0); `references/style_corpus/general.json` reproduces its published aggregate statistics (no paper text). See [`NOTICE.md`](skills/top-tier-paper-writing/NOTICE.md).
+
 ---
 
 ## 中文
@@ -231,11 +245,12 @@ All checkers use the same exit codes: 0 = pass, 1 = problems found, 2 = input or
 
 1. **领域模板**：识别论文所属领域（安全隐私、LLM/Agent 安全、联邦学习算法、系统、NLP/LLM），按该领域的标准化模板补齐章节骨架、必备要素与评测规范；
 2. **学术绘图**：现代简约架构图（带圈步骤编号 ①–⑥）与实验图（Okabe-Ito 色盲友好配色、单/双栏 3.4 / 6.9 in）；
-3. **Caption 规范**：图用 Sentence case、表用 Title Case，Caption 不下结论；
-4. **正文写作**：引言“双挑战—双案例—双直觉”，实验段落“总—分—归因”，拒绝报菜名；
-5. **双栏排版**：浮动体三大铁律，配套 `floatcheck.sty` + `check_layout.py` 自动检查；
-6. **自进化**：配套的 `evolve-paper-skill` 用顶会/顶刊范文驱动 Extractor → Writer → Reviewer 三个子 Agent 迭代改进 Skill，并以证据账本防止过拟合；图表模式以同样方式（Figure Extractor → Illustrator → Critic）进化架构图规则与分领域的图风格；
-7. **修订与投稿**：补实验后全文回溯、参考文献多源核验、arXiv 版本与期刊扩展投稿。
+3. **Caption 规范**：大小写与内容随会议：IEEE/ACM/ACL/USENIX 只描述不下结论，NeurIPS/ICML/ICLR 首句给出要点；
+4. **正文写作**：按论文类型与动机选择引言路线（方法、新能力、测量、理论、数据集等），先建 claim map（每个论点有证据、措辞强度和唯一所在段落），实验段落“总—分—归因”，拒绝报菜名；
+5. **防编造与防机器腔**：正文每个数字都能追溯到源文件（`check_numbers.py`）；套话、工作流痕迹与照抄范例会被标出；摘要与引言的文风与本领域语料双向比较；修改以逐句变更表呈现，每份稿件附作者报告（论点、待办、图表计划、Limitations 备注）；
+6. **双栏排版**：浮动体三大铁律，配套 `floatcheck.sty` + `check_layout.py` 自动检查；
+7. **自进化**：配套的 `evolve-paper-skill` 用顶会/顶刊范文驱动 Extractor → Writer → Reviewer 三个子 Agent 迭代改进 Skill，并以证据账本防止过拟合；图表模式以同样方式（Figure Extractor → Illustrator → Critic）进化架构图规则与分领域的图风格；留出的评测案例与已发表原文做盲评比较，衡量新版本 Skill 是否真的更好；
+8. **修订与投稿**：补实验后全文回溯、参考文献多源核验、arXiv 版本与期刊扩展投稿。
 
 完整规范见 [`skills/top-tier-paper-writing/SKILL.md`](skills/top-tier-paper-writing/SKILL.md)，自进化流程见 [`skills/evolve-paper-skill/SKILL.md`](skills/evolve-paper-skill/SKILL.md)。
 
@@ -314,6 +329,11 @@ skills/top-tier-paper-writing/
 │   ├── layout_check.py           # 一条命令：诊断编译 + 浮动体检查 + 基线对比
 │   ├── check_layout.py, floatcheck.sty  # 浮动体位置记录与分析
 │   ├── check_bib.py              # .bib 检查：重复、缺字段、未加括号的缩写、预印本、缺失引用
+│   ├── check_numbers.py          # 防编造：正文每个数字都追溯到源文件
+│   ├── claim_map.py, figure_plan.py, make_report.py  # 论点图与图表计划校验；作者报告
+│   ├── style_metrics.py          # 摘要/引言文风与本领域语料双向比较
+│   ├── change_table.py           # 修订的逐句变更表
+│   ├── find_exemplars.py         # 按修辞功能检索范例
 │   ├── domain_adapter.py         # 领域识别与领域配置
 │   ├── self_evolve.py            # 从范文萃取候选句式（预览，确认后 --apply）
 │   └── validate_skill.py         # 维护者：校验 Skill 打包
@@ -327,6 +347,9 @@ skills/top-tier-paper-writing/
 │   ├── revision_and_submission.md# 补实验后回溯、arXiv 版本、期刊扩展
 │   ├── domain_and_sentence_mining.md
 │   ├── lint_rules.md             # 所有检查代码的含义与修复方法
+│   ├── intake.md                 # 写作前要问的信息；修订模式
+│   ├── style_corpus/             # 文风区间：通用参考 + 自进化生成的分领域语料
+│   ├── exemplars/                # 按功能标注的范例库（由自进化填充）
 │   ├── venues.json               # 会议版式：栏宽、Caption 大小写、必需章节、页数限制、模板文件
 │   ├── mechanism_sentence_bank.md, domain_taxonomies.json
 │   └── case_lessons_ieee_sp.md, case_lessons_ieee_tcc.md  # 两篇真实论文的修改与投稿经验
@@ -337,6 +360,7 @@ skills/evolve-paper-skill/          # 维护者使用：用范文进化上面的
 ├── SKILL.md                      # 主 Agent（编排者）的 SOP：迭代循环、子 Agent 调用、人工确认、完成标准
 ├── scripts/evolve.py             # 确定性编排：工作区隔离、校验、泄漏检测、打分、保留/回滚、证据账本、防过拟合检查
 ├── scripts/figure_mode.py        # 图表模式：简报检查、原图裁剪、覆盖率、风格档案账本、生成器需求清单
+├── scripts/corpus_mode.py, eval_mode.py  # 文风区间与范例库；留出评测案例与盲评
 ├── assets/agents/                # 角色任务模板：extractor、writer、reviewer；fig_extractor、illustrator、critic
 ├── assets/schemas/               # materials、review、figure_brief、figure_review 的格式契约
 └── references/                   # anti_overfitting.md（规则准入阶梯）、review_rubric.md（8 维评分锚点）、figure_rubric.md（6 维图评分）
@@ -424,6 +448,10 @@ uv run $S/check_bib.py paper/refs.bib --tex paper/main.tex
 - `SKILL.md` 只放流程、规则与完成标准（500 行以内）；细节写进 `references/`，并在对应分支的 **Read** 步骤中登记。
 - 新增确定性检查时，写成 `scripts/` 中的脚本（带 PEP 723 头、`--json`、统一退出码），并把它的代码加入 `references/lint_rules.md`。
 - 流程图由代码生成：修改 `docs/diagram/build_workflow.py` 后运行 `python3 docs/diagram/build_workflow.py && node docs/diagram/render.js`，后者以 3 倍分辨率导出 `docs/images/workflow.png`，并检查文字是否溢出、元素是否重叠（有问题时退出码为 1）。
+
+### 致谢
+
+论文类型路线、claim map、双向文风指标、图表计划、范例库与留出盲评等做法改编自 [Best-Paper-Writing-Skill](https://github.com/gulucaptain/Best-Paper-Writing-Skill)（CC BY 4.0）；`references/style_corpus/general.json` 复用了其公开的汇总统计（不含任何论文原文）。详见 [`NOTICE.md`](skills/top-tier-paper-writing/NOTICE.md)。
 
 ---
 
