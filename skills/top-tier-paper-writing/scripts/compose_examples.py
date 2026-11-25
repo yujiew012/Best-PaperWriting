@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.8"
-# dependencies = ["matplotlib>=3.5", "numpy>=1.21"]
+# dependencies = ["matplotlib>=3.5", "numpy>=1.21", "pillow"]
 # ///
 """Grid of example inputs (e.g. clean vs. attacked images) at an exact column width.
 
@@ -25,10 +25,11 @@ from pubstyle import apply_style, fail, save_figure  # noqa: E402
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--images", nargs="+", required=True, help="image files (PNG/JPG), row-major order")
+    ap.add_argument("--images", nargs="+", required=True,
+                    help="image files (PNG/JPG, or PDF: page 1 rasterized at 300 dpi), row-major order")
     ap.add_argument("--labels", nargs="+", help="one label per image (shown under it)")
     ap.add_argument("--row-labels", nargs="+", help="optional label per row (left side)")
-    ap.add_argument("--ncols", type=int, default=0, help="images per row (default: all in one row, max 4)")
+    ap.add_argument("--ncols", type=int, help="images per row (default: all in one row, max 4)")
     ap.add_argument("--layout", choices=["single", "double", "onehalf"], default="double")
     ap.add_argument("--venue", help="venue profile from references/venues.json (sets the width)")
     ap.add_argument("--height", type=float, help="figure height in inches (default: from the image aspect)")
@@ -41,6 +42,8 @@ def main(argv=None):
     if args.labels and len(args.labels) != len(args.images):
         fail(f"{len(args.labels)} labels for {len(args.images)} images")
     n = len(args.images)
+    if args.ncols is not None and args.ncols < 1:
+        fail("--ncols must be >= 1")
     ncols = args.ncols or min(n, 4)
     nrows = math.ceil(n / ncols)
     if args.row_labels and len(args.row_labels) != nrows:
@@ -48,7 +51,7 @@ def main(argv=None):
 
     import matplotlib.image as mpimg
     import matplotlib.pyplot as plt
-    imgs = [mpimg.imread(f) for f in args.images]
+    imgs = [load_image(f, mpimg) for f in args.images]
     aspect = sum(im.shape[0] / im.shape[1] for im in imgs) / n          # mean height/width
     from pubstyle import venue_widths
     width = venue_widths(args.venue)[args.layout]
@@ -75,6 +78,27 @@ def main(argv=None):
             ax.set_ylabel(args.row_labels[k // ncols], fontsize=8)
     save_figure(fig, args.out)
     return 0
+
+
+def load_image(path, mpimg):
+    """Pixel array of a PNG/JPG, or of page 1 of a PDF rasterized at 300 dpi (pdftoppm)."""
+    import shutil
+    import subprocess
+    import tempfile
+    if path.lower().endswith(".pdf"):
+        if not shutil.which("pdftoppm"):
+            fail(f"{path}: a PDF input needs pdftoppm (poppler-utils); export a PNG instead")
+        with tempfile.TemporaryDirectory() as tmp:
+            subprocess.run(["pdftoppm", "-f", "1", "-l", "1", "-r", "300", "-png", "-singlefile", path,
+                            os.path.join(tmp, "page")], check=False, capture_output=True)
+            png = os.path.join(tmp, "page.png")
+            if not os.path.exists(png):
+                fail(f"cannot rasterize {path}")
+            return mpimg.imread(png)
+    try:
+        return mpimg.imread(path)
+    except Exception as e:  # noqa: BLE001 -- PIL raises several types for unreadable files
+        fail(f"cannot read image {path}: {e}")
 
 
 if __name__ == "__main__":

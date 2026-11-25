@@ -283,6 +283,10 @@ def load_profile(domain=None, name=None):
     """(profile, matching) -- matching is False when a profile from another area stands in."""
     if name:
         p = name if name.endswith(".json") else os.path.join(CORPUS, f"{name}.json")
+        if not os.path.exists(p):
+            have = sorted(f[:-5] for f in os.listdir(CORPUS) if f.endswith(".json"))
+            print(f"[error] style profile not found: {name} (available: {', '.join(have)})", file=sys.stderr)
+            sys.exit(2)
         return json.load(open(p, encoding="utf-8")), True
     if domain:
         p = os.path.join(CORPUS, f"{domain}.json")

@@ -146,6 +146,9 @@ def main(argv=None):
         results += [module("matplotlib"), module("numpy")]
     if "layout" in feats:
         results += latex_checks()
+    if args.paper_dir and not os.path.isdir(args.paper_dir):
+        results.append(ok("paper directory", False, f"{args.paper_dir} does not exist",
+                          "pass the folder that contains main.tex"))
     if args.venue:
         results += venue_checks(args.venue, args.paper_dir)
     if "network" in feats:

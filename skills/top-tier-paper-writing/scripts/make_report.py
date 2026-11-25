@@ -29,8 +29,12 @@ import figure_plan as fplan  # noqa: E402
 def load(path):
     if not path:
         return None
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"[error] cannot read {path}: {e}", file=sys.stderr)
+        sys.exit(2)
 
 
 def todos_in_tex(tex):
@@ -56,6 +60,11 @@ def main(argv=None):
     ap.add_argument("--out", default="report.md")
     a = ap.parse_args(argv)
     cm = load(a.claims)
+    shape = cmap.shape_errors(cm)
+    if shape:
+        for e in shape:
+            print(f"[error] {a.claims}: {e}", file=sys.stderr)
+        return 2
     L = ["# Author report", ""]
     L += ["## 1. Claim and route", ""]
     for key, label in (("one_line", "Claim"), ("paper_type", "Paper type"), ("motivation", "Motivation"),
@@ -73,7 +82,7 @@ def main(argv=None):
     todo += [f"- manuscript {t}" for t in todos_in_tex(a.tex)]
     plan = load(a.figures)
     if plan:
-        todo += [f"- {r['id']}: needs {r.get('material', '?')}" for r in plan.get("figures", [])
+        todo += [f"- {r.get('id', '?')}: needs {r.get('material', '?')}" for r in plan.get("figures", [])
                  if r.get("status") == "placeholder"]
     L += (todo or ["- none"]) + [""]
     L += ["## 4. Checks", ""]

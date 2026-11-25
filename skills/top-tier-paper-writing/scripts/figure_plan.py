@@ -48,6 +48,8 @@ def check(plan, claims=None, tex=None):
     cmap = {c["id"]: c for c in (claims or {}).get("claims", []) if c.get("id")}
     for r in rows:
         rid = r.get("id", "?")
+        if not r.get("id"):
+            add("ERROR", "a row without 'id' (use the float's \\label, e.g. fig:overview)")
         if r.get("status") not in STATUS:
             add("ERROR", f"{rid}: status must be one of {STATUS}")
         if r.get("type") not in TYPES:
@@ -132,6 +134,20 @@ def main(argv=None):
         claims = json.load(open(a.claims, encoding="utf-8")) if a.claims else None
     except (OSError, json.JSONDecodeError) as e:
         print(f"[error] {e}", file=sys.stderr)
+        return 2
+    errs = []
+    if not isinstance(plan, dict) or not isinstance(plan.get("figures", []), list) or \
+            any(not isinstance(r, dict) for r in plan.get("figures", [])):
+        errs.append(f"{a.plan}: must be an object with a 'figures' list of objects (see assets/figure_plan_example.json)")
+    if claims is not None:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import claim_map
+        errs += [f"{a.claims}: {e}" for e in claim_map.shape_errors(claims)]
+    if a.tex and not os.path.exists(a.tex):
+        errs.append(f"not found: {a.tex}")
+    if errs:
+        for e in errs:
+            print(f"[error] {e}", file=sys.stderr)
         return 2
     issues = check(plan, claims, a.tex)
     order = {"ERROR": 0, "WARN": 1, "NOTE": 2}

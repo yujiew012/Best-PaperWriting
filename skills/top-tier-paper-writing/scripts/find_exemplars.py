@@ -60,6 +60,9 @@ def main(argv=None):
     fns = functions()
     recs = records(a.paragraphs)
     if a.check:
+        if not os.path.exists(a.check):
+            print(f"[error] not found: {a.check}", file=sys.stderr)
+            return 2
         bank = set()
         for r in records(False) + records(True):
             bank |= grams(r.get("text", ""))
@@ -89,7 +92,8 @@ def main(argv=None):
             elif sel:
                 print(f"(no exemplar with {field}={want}; showing other {a.function} exemplars)\n")
     if not sel:
-        print(f"no exemplars for {a.function} yet; write from the function description: {fns.get(a.function, '')}")
+        desc = fns.get(a.function) or "; ".join(f"{k}: {v}" for k, v in fns.items() if k.startswith(a.function))
+        print(f"no exemplars for {a.function} yet; write from the function description: {desc}")
         return 0
     if a.n and len(sel) > a.n:
         sel = random.sample(sel, a.n)

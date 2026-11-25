@@ -257,7 +257,10 @@ def main(argv=None):
     if not os.path.exists(a.draft):
         print(f"[error] not found: {a.draft}", file=sys.stderr)
         return 2
-    secs = set(a.sections.split(",")) if a.sections else None
+    secs = {s.strip() for s in a.sections.split(",") if s.strip()} if a.sections else None
+    if secs and not secs <= {"abstract", "intro", "body"}:
+        print(f"[error] --sections takes abstract, intro, body; got {sorted(secs)}", file=sys.stderr)
+        return 2
     nums = draft_numbers(a.draft, secs)
     vals, groups, files = source_numbers(a.sources)
     vals += [x for x in (to_float(t) for t in a.allow.split(",") if t.strip()) if x is not None]

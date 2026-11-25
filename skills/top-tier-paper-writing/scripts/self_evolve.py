@@ -99,9 +99,17 @@ def split_sentences(text: str):
 
 def looks_clean(s: str) -> bool:
     """Reject sentences that still carry extraction noise."""
+    s = s.strip()
+    if len(s) < 20:
+        return False
     if re.search(r"[<>{}\\|]|https?://|\$|\bTable\s*$", s):
         return False
     if not s[0].isupper() or s[-1] not in ".!?":
+        return False
+    # never learn wording the linter forbids (overclaims, vague hedges, boilerplate)
+    if re.search(r"\b(?:conclusively|undoubtedly|unequivocally|definitively|prov(?:e|es|ed|en)\b|"
+                 r"clearly|obviously|we hope|delv\w*|pivotal|seamless\w*|paradigm shift|simple yet effective|"
+                 r"perfectly|extensive experiments demonstrate)", s, re.I):
         return False
     letters = sum(c.isalpha() for c in s)
     if letters / max(len(s), 1) < 0.7:
@@ -122,7 +130,10 @@ def _normalize(s: str) -> str:
 def existing_bank_sentences() -> set:
     if not SENTENCE_BANK_PATH.exists():
         return set()
-    return {_normalize(s) for s in split_sentences(clean_text(SENTENCE_BANK_PATH.read_text(encoding="utf-8")))}
+    text = SENTENCE_BANK_PATH.read_text(encoding="utf-8")
+    entries = re.findall(r"^\s*[-*]\s*`([^`]+)`", text, re.M)            # "- `sentence`" lines written by --apply
+    return ({_normalize(s) for s in entries}
+            | {_normalize(s) for s in split_sentences(clean_text(text))})
 
 
 def extract_patterns_from_text(text: str) -> dict:

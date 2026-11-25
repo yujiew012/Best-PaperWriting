@@ -176,6 +176,8 @@ def cmd_add_exemplars(a):
     valid = {f"{s}.{f}" for s, d in fns.items() if not s.startswith("$") for f in d}
     proposed = E.jload(a.file)
     proposed = proposed.get("exemplars", proposed) if isinstance(proposed, dict) else proposed
+    if not isinstance(proposed, list) or any(not isinstance(x, dict) for x in proposed):
+        E.die(f"{a.file}: expected a JSON list of {{kind, section, function, text, why}} objects", 2)
     src = paper_sources(ctx).get(pid)
     text = norm(paper_text(ctx, pid, src))
     if not text:
@@ -206,7 +208,7 @@ def cmd_add_exemplars(a):
             continue
         added[kind].append({
             "id": f"X-{pid}-{kind[0]}{len(have[kind]) + len(added[kind]) + 1}", "paper_id": pid,
-            "section": ex["section"], "function": ex["function"], "text": body, "why": ex["why"].strip(),
+            "section": ex["section"], "function": ex["function"], "text": body, "why": str(ex["why"]).strip(),
             "paper": info.get("title", pid)[:80], "venue": info.get("venue", ""), "year": info.get("year", ""),
             "domain": info.get("domain", ""), "paper_type": ex.get("paper_type", info.get("paper_type", "")),
             "motivation": ex.get("motivation", info.get("motivation", ""))})

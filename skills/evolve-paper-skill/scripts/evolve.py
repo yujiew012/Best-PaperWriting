@@ -645,12 +645,15 @@ def cmd_score(a):
             decision = f"revert_to_{best['iter']}"
         metrics["best_previous"] = {"iter": best["iter"], "score": best["score"]}
     metrics["decision"] = decision
+    if jload(os.path.join(it, "metrics.json"), default={}).get("reverted"):
+        metrics["reverted"] = True          # re-scoring never revives an iteration that was reverted
     jsave(os.path.join(it, "metrics.json"), metrics)
     led = ctx.ledger()
     pe = led.setdefault("papers", {}).setdefault(pid, {})
     if not leak and score > pe.get("best_score", 0):
         pe["best_score"] = score
-    pe.setdefault("history", []).append({"run": run["run_id"], "iter": k, "score": score, "valid": not leak,
+    pe["history"] = [h for h in pe.get("history", []) if (h.get("run"), h.get("iter")) != (run["run_id"], k)]
+    pe["history"].append({"run": run["run_id"], "iter": k, "score": score, "valid": not leak,
                                          "role": p.get("role", "train")})
     jsave(ctx.ledger_path, led)
     print(f"paper {pid} iteration {k}: score {score:.2f}/5  "
@@ -975,6 +978,8 @@ def cmd_revert(a):
     led = ctx.ledger()
     rejected = []
     for r in led["rules"]:
+        if r["status"] == "rejected":
+            continue                      # already rejected by an earlier revert
         applied = [ap for ap in r.get("applied", []) if ap.get("run") == run["run_id"]]
         if since is None:
             hit = bool(applied)

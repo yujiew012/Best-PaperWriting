@@ -339,11 +339,12 @@ def run(main_tex, caption_style, num_threshold, disabled, required_sections=(), 
             continue
         # a reported number: a decimal or a percentage/pp/x value that is not part of an
         # identifier such as GPT-4.1, Seed-1.6, 4.5V or 235B
-        nums = [m.group(0) for m in re.finditer(
+        found = [m for m in re.finditer(
             r"(?<![\w.\-])\d+(?:\.\d+)?(?![\w.])(?:\s*(?:\\%|%|pp\b|×|x\b))?", para)
             if "." in m.group(0) or re.search(r"%|pp|×|x$", m.group(0))]
+        nums = [m.group(0) for m in found]
         if len(nums) >= num_threshold:
-            lead = len(para) - len(para.lstrip())
+            lead = found[0].start()                       # point at the first reported number
             add("W303", body_start + pm.start() + lead,
                 f"paragraph quotes {len(nums)} numbers; keep 1-3 key numbers and let the table carry the rest")
 

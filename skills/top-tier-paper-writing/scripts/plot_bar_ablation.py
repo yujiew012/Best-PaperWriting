@@ -105,6 +105,10 @@ def main(argv=None):
             fail(f"variant '{name}' not found; variants are: {variants}")
     if args.annotate_delta and not args.ours:
         fail("--annotate-delta needs --ours (in --paired mode the change is always marked)")
+    if args.paired:
+        pairs = [g for g in groups if (g, args.paired[0]) in stats and (g, args.paired[1]) in stats]
+        if not pairs:
+            fail(f"--paired: no group has both '{args.paired[0]}' and '{args.paired[1]}'")
     missing = [(g, v) for g in groups for v in variants if (g, v) not in stats]
     if missing:
         print(f"[warn] missing bars (left empty): {missing}", file=sys.stderr)

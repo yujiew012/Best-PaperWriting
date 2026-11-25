@@ -53,9 +53,14 @@ def check_value(path, value, b=None):
 
 def load(name_or_path):
     """Load a profile by domain name or path; returns (profile_dict, path)."""
-    path = name_or_path if name_or_path.endswith(".json") else os.path.join(STYLE_DIR, f"{name_or_path}.json")
-    if not os.path.exists(path):
-        path = os.path.join(STYLE_DIR, "default.json")
+    if name_or_path.endswith(".json"):
+        path = name_or_path
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"style profile not found: {path}")
+    else:                                   # a domain without its own profile uses the default one
+        path = os.path.join(STYLE_DIR, f"{name_or_path}.json")
+        if not os.path.exists(path):
+            path = os.path.join(STYLE_DIR, "default.json")
     with open(path, encoding="utf-8") as f:
         return json.load(f), path
 

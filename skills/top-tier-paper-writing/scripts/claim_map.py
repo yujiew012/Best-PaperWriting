@@ -33,6 +33,30 @@ NEEDS_EVIDENCE = ("result", "advantage", "stance", "contribution")
 BUDGET = {"abstract": 5, "intro": 14}        # p90 of award papers (numbers per section), see claims_and_evidence.md
 
 
+def shape_errors(cm):
+    """Structural problems that make the other checks meaningless (reported with exit 2)."""
+    if not isinstance(cm, dict):
+        return ["the claim map must be a JSON object with a 'claims' list (see assets/claim_map_example.json)"]
+    errs = []
+    claims = cm.get("claims", [])
+    if not isinstance(claims, list):
+        return ["'claims' must be a list of objects"]
+    for i, c in enumerate(claims):
+        if not isinstance(c, dict):
+            errs.append(f"claims[{i}] must be an object, got {type(c).__name__}")
+            continue
+        if "evidence" in c and not isinstance(c["evidence"], list):
+            errs.append(f"claims[{i}] ({c.get('id')}): 'evidence' must be a list, e.g. [\"Tab. 1\"]")
+        if "settings" in c and (isinstance(c["settings"], bool) or not isinstance(c["settings"], int)):
+            errs.append(f"claims[{i}] ({c.get('id')}): 'settings' must be an integer")
+        if "where" in c and not isinstance(c["where"], (str, list)):
+            errs.append(f"claims[{i}] ({c.get('id')}): 'where' must be a string such as \"intro:P3\"")
+    nums = cm.get("numbers", [])
+    if not isinstance(nums, list) or any(not isinstance(n, dict) for n in nums):
+        errs.append("'numbers' must be a list of objects {value, role, claim}")
+    return errs
+
+
 def check(cm, tex=None):
     out = []
 
@@ -105,7 +129,7 @@ def render(cm):
     lines = ["| id | kind | claim | strength | evidence | where | method / experiment / ablation |",
              "| :--- | :--- | :--- | :--- | :--- | :--- | :--- |"]
     for c in cm.get("claims", []):
-        ev = ", ".join(c.get("evidence", [])) or f"**TODO**: {c.get('todo', '')}"
+        ev = ", ".join(str(e) for e in c.get("evidence", [])) or f"**TODO**: {c.get('todo', '')}"
         em = " / ".join(str(c.get(k, "-")) for k in ("method_section", "experiment", "ablation"))
         lines.append(f"| {c.get('id')} | {c.get('kind')} | {c.get('text', '')} | {c.get('strength', '')} | {ev} | "
                      f"{c.get('where', '')}{' + abstract' if c.get('abstract') else ''} | {em} |")
@@ -125,6 +149,14 @@ def main(argv=None):
         cm = json.load(open(a.claim_map, encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as e:
         print(f"[error] {a.claim_map}: {e}", file=sys.stderr)
+        return 2
+    shape = shape_errors(cm)
+    if shape:
+        for e in shape:
+            print(f"[error] {a.claim_map}: {e}", file=sys.stderr)
+        return 2
+    if a.tex and not os.path.exists(a.tex):
+        print(f"[error] not found: {a.tex}", file=sys.stderr)
         return 2
     issues = check(cm, a.tex)
     order = {"ERROR": 0, "WARN": 1, "NOTE": 2}
