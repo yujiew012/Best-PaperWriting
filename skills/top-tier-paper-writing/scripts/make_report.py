@@ -41,9 +41,14 @@ def todos_in_tex(tex):
     if not tex or not os.path.exists(tex):
         return []
     text = fplan.read(tex)
+    # the definition of a TODO macro (\newcommand{\TODO}[1]{...[TODO: #1]}) is not an open item
+    text = re.sub(r"\\(?:(?:re|provide)?newcommand\*?|def)\s*\{?\\\w+\}?[^\n]*",
+                  lambda m: " " * len(m.group(0)), text)
     out = []
     for m in re.finditer(r"\[TODO:?([^\]]*)\]|\\(?:todo|TODO)\{([^}]*)\}|\\FigPlan\{([^}]*)\}", text):
-        what = next(g for g in m.groups() if g is not None).strip() or "(unspecified)"
+        what = " ".join(next(g for g in m.groups() if g is not None).split()) or "(unspecified)"
+        if re.fullmatch(r"#\d", what):
+            continue
         out.append(f"line {text.count(chr(10), 0, m.start()) + 1}: {what}")
     return out
 
