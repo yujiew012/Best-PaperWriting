@@ -59,7 +59,7 @@ Run order: **H → A/B → C/D → F → E → G**. Branch I runs only on reques
 ## 2. Branches (Read → Do → Verify)
 
 ### A. Draft or revise sections
-- **Read** `references/intake.md`, `references/writing/principles_and_style.md` and `references/writing/claims_and_evidence.md`, then only the file for the section at hand:
+- **Read** `references/writing/seven_principles.md` (the seven principles every section follows), `references/intake.md`, `references/writing/principles_and_style.md` and `references/writing/claims_and_evidence.md`, then only the file for the section at hand:
 
   | Section | File |
   | :--- | :--- |
@@ -73,15 +73,17 @@ Run order: **H → A/B → C/D → F → E → G**. Branch I runs only on reques
 - **Do**
   1. **Intake** (`references/intake.md`): collect the required fields and, in the same single message, ask for the empty memorable ones (insight, closest work, handle, concrete example, what is surprising, efficiency, what it changes). Continue with `[TODO: ...]` for what the user cannot answer. The user can fill `assets/intake_template.md`.
   2. **Route** (`references/writing/routing.md`): paper type, motivation, tension; this picks the introduction plan, the abstract arc and Figure 1.
-  3. **Claim map** (`claims_and_evidence.md`): write `claim_map.json` (format: `assets/claim_map_example.json`) with each claim's evidence, strength, number roles and the one paragraph that states it; validate with `uv run <skill_dir>/scripts/claim_map.py claim_map.json`.
+  3. **Claim map** (`claims_and_evidence.md`): write `claim_map.json` (format: `assets/claim_map_example.json`) with the 7W `story` (Principle 1), each claim's evidence, strength, number roles and the one paragraph that states it, listing claims in presentation order with the strongest evidence first (Principle 6); validate with `uv run <skill_dir>/scripts/claim_map.py claim_map.json`.
   4. **Exemplars**: for each paragraph function, read 2-3 exemplars (`uv run <skill_dir>/scripts/find_exemplars.py intro.gap --domain <domain_id> -n 3`) for structure; never reuse their wording.
-  5. **Draft** following the route's paragraph plan and the claim map. Keep terminology identical to the rest of the paper.
+  5. **Draft** following the route's paragraph plan and the claim map: each section opens with a purpose paragraph and ends with a transition, each paragraph opens with its topic sentence, old information comes first and new information last, every term is defined before use, one or two topics per sentence with the verb next to the subject (`seven_principles.md` §2–5). Keep terminology identical to the rest of the paper.
+  5b. **Reverse outline**: `uv run <skill_dir>/scripts/outline.py paper/main.tex --claims claim_map.json --md outline.md`. Read the topic sentences alone: they must tell the story in order. Fix every WARN (a section without an opening paragraph), then move paragraphs until the order follows the logic.
   6. **Revise mode** (the user gave existing text): decompose it into the intake fields first (present / vague / missing), then deliver a sentence-level change table instead of a diff: `uv run <skill_dir>/scripts/change_table.py old.tex new.tex --section abstract --reasons reasons.json --out changes.md`. Apply only the rows the user accepts (rule 7).
-  7. **Author report**: `uv run <skill_dir>/scripts/make_report.py --claims claim_map.json --tex paper/main.tex [--figures figure_plan.json] [--numbers numbers.json] [--lint lint.json] [--style style.json] [--changes changes.md] --out report.md`.
+  7. **Author report**: `uv run <skill_dir>/scripts/make_report.py --claims claim_map.json --tex paper/main.tex [--figures figure_plan.json] [--numbers numbers.json] [--lint lint.json] [--style style.json] [--changes changes.md] [--outline outline.md] --out report.md`.
 - **Verify**
-  - `lint_paper.py --venue <venue>` reports 0 errors and no new warnings compared with `lint_before.json` in the text you touched (including W306 boilerplate, W307 workflow traces, W310 exemplar reuse).
+  - `lint_paper.py --venue <venue>` reports 0 errors and no new warnings compared with `lint_before.json` in the text you touched (including W306 boilerplate, W307 workflow traces, W310 exemplar reuse, W311 terms used before definition, W312 sentences of 60+ words, W314 method order across tables).
   - `check_numbers.py paper/main.tex --sources <result files> stats.json` reports no UNSUPPORTED number; DERIVED numbers are confirmed in the report.
-  - `claim_map.py claim_map.json --tex paper/main.tex` reports no ERROR.
+  - `claim_map.py claim_map.json --tex paper/main.tex` reports no ERROR (and no WARN for the 7W story or the evidence order).
+  - `outline.py paper/main.tex` reports no WARN, and the topic sentences read as the paper's story.
   - For the abstract and introduction: `style_metrics.py paper/main.tex --domain <domain_id> --json style.json`; every WARN is fixed or justified in the report. Its ranges come from a domain corpus when one exists (≥ 5 papers), otherwise from a general reference corpus (NOTEs only): aim near the median, never at zero.
 
 ### B. Results → evaluation prose
@@ -94,6 +96,7 @@ Run order: **H → A/B → C/D → F → E → G**. Branch I runs only on reques
      ```
      Add `--lower-better` for latency or attack-success metrics, and `--drop A B` for two-phase tests.
   3. Write each paragraph as **topic → evidence → mechanism**:
+     - **Order:** paragraphs and the evidence inside them go from the strongest to the weakest (main comparison → ablation → analysis → case study; Principle 6 in `references/writing/seven_principles.md`).
      - **Topic:** one sentence with the conclusion.
      - **Evidence:** 1–3 numbers from the hardest setting plus the margin range, all taken from `stats.json`.
      - **Mechanism:** name the component and the operation that explains the result, worded by evidence strength: ablation or controlled intervention → causal wording; probes or correlations → "is consistent with"; no evidence → state it as a hypothesis (`references/writing/evaluation.md` attribution ladder). NEVER call an untested explanation confirmed.
@@ -198,7 +201,7 @@ Before you report completion, run the checks that apply and include their result
 
 - [ ] `lint_paper.py --venue <venue> <main.tex>`: 0 errors; no new warnings compared with `lint_before.json` in edited text.
 - [ ] `check_numbers.py` reports no UNSUPPORTED number; every new or changed number is listed as **number → source file** (or `stats.json`).
-- [ ] Sections drafted or revised: `claim_map.py` has no ERROR, `report.md` is delivered (`make_report.py`), and in revise mode the change table was shown before applying.
+- [ ] Sections drafted or revised: the reverse outline (`outline.py`) reads as the story, `claim_map.py` has no ERROR, `report.md` is delivered (`make_report.py`), and in revise mode the change table was shown before applying.
 - [ ] Figures: `check_figure.py` exits 0, and every script warning is resolved.
 - [ ] Layout touched or text length changed: `layout_check.py --compare` reports no regression, and the page limit holds.
 - [ ] Bibliography touched: `check_bib.py` exits 0, and unverified entries are listed.
@@ -248,9 +251,11 @@ Before you report completion, run the checks that apply and include their result
 | `scripts/claim_map.py`, `scripts/figure_plan.py`, `scripts/make_report.py` | Claim map and figure plan validation; the author report |
 | `scripts/style_metrics.py` | Abstract/introduction style metrics against a corpus profile (two-sided) |
 | `scripts/change_table.py` | Sentence-level change table for revisions |
+| `scripts/outline.py` | Reverse outline (topic sentences) and structure checks |
 | `scripts/find_exemplars.py` | Exemplar passages by rhetorical function |
 | `scripts/validate_skill.py` | Maintainers: validate this skill's packaging |
 | `references/lint_rules.md` | Every checker code, with its fix |
+| `references/writing/seven_principles.md` | The seven principles (story, structure, old-to-new, placement, sentences, credibility order, cognitive alignment) and the check for each |
 | `references/intake.md`, `assets/intake_template.md` | What to ask before writing; revise mode |
 | `references/writing/routing.md`, `references/writing/claims_and_evidence.md` | Paper type × motivation routes; claim map, number roles, say-it-once |
 | `references/style_corpus/` | Style ranges: `general.json` (reference) and `<domain>.json` built by evolve-paper-skill |

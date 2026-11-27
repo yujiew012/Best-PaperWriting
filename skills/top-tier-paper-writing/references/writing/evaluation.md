@@ -14,6 +14,8 @@
   - **Implementation Details**：硬件型号、深度学习框架、优化器类型、学习率、通信轮数、客户端参与率；
   - **Metrics**：评估指标定义（Accuracy, Convergence Speed, Variance Across Backbones, Drop Rate）。
 
+- **证据强度递减（Decreasing order of credibility，`seven_principles.md` §6）**：像法庭辩论一样先摆最强的证据。小节顺序为“主实验对比 → 消融 → 机理分析 → 案例/轶事”；段内先给跨基准/跨模型一致成立的结论，再给单一设定的观察，最后给尚未直接检验的解释。读者接受了最强证据后，对较弱证据更容易接受；审稿人即使对某条较弱证据有异议，也会先认真思考为何不同意。多角度、多层次的独立证据彼此印证，形成证据链。
+
 ### 2.6.2 实验结果段落黄金法则：“总—分—总”与机制映射
 评测正文的每一个自然段，都必须严格遵守**“总—分—总”（Topic - Evidence - Mechanism Mapping）**三步逻辑：
 

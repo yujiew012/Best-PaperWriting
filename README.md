@@ -24,7 +24,7 @@ Written from the perspective of a senior PhD researcher and reviewer with severa
 1. **Domain templates.** Identify the paper's area (security & privacy, LLM/agent security, federated learning algorithms, systems, NLP/LLM) and apply that area's standardized template: paper skeleton, mandatory elements, evaluation protocol.
 2. **Academic figures.** Modern-minimal architecture diagrams with numbered steps ①–⑥, and data plots with the colorblind-safe Okabe-Ito palette at exact single- or double-column widths (3.4 / 6.9 in).
 3. **Captions.** Case and content follow the venue: descriptive captions for IEEE/ACM/ACL/USENIX, takeaway-first captions for NeurIPS/ICML/ICLR.
-4. **Prose.** Introductions routed by paper type and motivation (method, capability, measurement, theory, dataset, ...), built from a claim map in which every claim has its evidence, its wording strength and exactly one paragraph; results paragraphs as claim → evidence → mechanism, never reading the table aloud.
+4. **Prose.** Seven principles drive every section: tell one story (the 7W), clear structure with purpose paragraphs and topic sentences, old-to-new information flow, strategic placement, short sentences with the verb next to the subject, evidence in decreasing order of credibility, and data presented the way readers expect; a reverse outline (`outline.py`) and lint checks enforce them. Introductions are routed by paper type and motivation (method, capability, measurement, theory, dataset, ...), built from a claim map in which every claim has its evidence, its wording strength and exactly one paragraph; results paragraphs as claim → evidence → mechanism, never reading the table aloud.
 5. **Checks against fabrication and machine prose.** Every number in the text is traced to a source file (`check_numbers.py`); boilerplate, workflow traces and exemplar reuse are flagged; abstract and introduction style is compared, in both directions, with a corpus of the paper's area; revisions come as a sentence-level change table, and every draft ships with an author report (claims, TODOs, figure plan, Limitations notes).
 6. **Two-column layout.** Three rules for float placement, checked automatically with `floatcheck.sty` + `check_layout.py`.
 7. **Self-evolution.** The companion `evolve-paper-skill` improves the skill from exemplar papers with three sub-agents (Extractor → Writer → Reviewer); an evidence ledger prevents overfitting. A figure mode evolves the architecture-diagram rules and per-domain diagram styles the same way (Figure Extractor → Illustrator → Critic). Held-out eval cases with a blind comparison against the published original measure whether a new skill version is actually better.
@@ -111,12 +111,13 @@ skills/top-tier-paper-writing/
 │   ├── claim_map.py, figure_plan.py, make_report.py  # claim map and figure plan validation; author report
 │   ├── style_metrics.py          # abstract/introduction style vs. a corpus of the area (two-sided)
 │   ├── change_table.py           # sentence-level change table for revisions
+│   ├── outline.py                # reverse outline (topic sentences) and structure checks
 │   ├── find_exemplars.py         # exemplar passages by rhetorical function
 │   ├── domain_adapter.py         # domain detection and domain profile
 │   ├── self_evolve.py            # candidate sentences from exemplar papers (preview; --apply after review)
 │   └── validate_skill.py         # maintainers: validate the skill's packaging
 ├── references/
-│   ├── writing/                  # per section: principles & style, abstract/intro, related work/preliminaries, method/theory, evaluation, discussion/conclusion/ethics
+│   ├── writing/                  # seven principles; per section: principles & style, abstract/intro, related work/preliminaries, method/theory, evaluation, discussion/conclusion/ethics
 │   ├── domains/                  # standardized domain templates (same 8 sections): security_privacy, llm_agent_security, machine_learning_fl, distributed_systems, nlp_llm
 │   ├── figures_and_captions.md   # architecture diagrams, data plots, tables, captions, with good/bad examples
 │   ├── figure_styles/            # per-domain diagram styles (<domain>.json: fonts, strokes, fills, role colours, topology) + _bounds.json
@@ -246,7 +247,7 @@ Paper-type routing, the claim map, two-sided style metrics, the figure plan, the
 1. **领域模板**：识别论文所属领域（安全隐私、LLM/Agent 安全、联邦学习算法、系统、NLP/LLM），按该领域的标准化模板补齐章节骨架、必备要素与评测规范；
 2. **学术绘图**：现代简约架构图（带圈步骤编号 ①–⑥）与实验图（Okabe-Ito 色盲友好配色、单/双栏 3.4 / 6.9 in）；
 3. **Caption 规范**：大小写与内容随会议：IEEE/ACM/ACL/USENIX 只描述不下结论，NeurIPS/ICML/ICLR 首句给出要点；
-4. **正文写作**：按论文类型与动机选择引言路线（方法、新能力、测量、理论、数据集等），先建 claim map（每个论点有证据、措辞强度和唯一所在段落），实验段落“总—分—归因”，拒绝报菜名；
+4. **正文写作**：七条总原则贯穿每一章节：围绕一个论点讲好故事（7W）、清晰结构（章节首段点明目的、段首主题句）、旧信息在前新信息在后、信息放在读者预期的位置、句子短且谓语紧跟主语、证据按可信度递减排列、按读者习惯呈现数据，并由反向大纲（`outline.py`）与 lint 检查落实；按论文类型与动机选择引言路线（方法、新能力、测量、理论、数据集等），先建 claim map（每个论点有证据、措辞强度和唯一所在段落），实验段落“总—分—归因”，拒绝报菜名；
 5. **防编造与防机器腔**：正文每个数字都能追溯到源文件（`check_numbers.py`）；套话、工作流痕迹与照抄范例会被标出；摘要与引言的文风与本领域语料双向比较；修改以逐句变更表呈现，每份稿件附作者报告（论点、待办、图表计划、Limitations 备注）；
 6. **双栏排版**：浮动体三大铁律，配套 `floatcheck.sty` + `check_layout.py` 自动检查；
 7. **自进化**：配套的 `evolve-paper-skill` 用顶会/顶刊范文驱动 Extractor → Writer → Reviewer 三个子 Agent 迭代改进 Skill，并以证据账本防止过拟合；图表模式以同样方式（Figure Extractor → Illustrator → Critic）进化架构图规则与分领域的图风格；留出的评测案例与已发表原文做盲评比较，衡量新版本 Skill 是否真的更好；
@@ -333,12 +334,13 @@ skills/top-tier-paper-writing/
 │   ├── claim_map.py, figure_plan.py, make_report.py  # 论点图与图表计划校验；作者报告
 │   ├── style_metrics.py          # 摘要/引言文风与本领域语料双向比较
 │   ├── change_table.py           # 修订的逐句变更表
+│   ├── outline.py                # 反向大纲（段首主题句）与结构检查
 │   ├── find_exemplars.py         # 按修辞功能检索范例
 │   ├── domain_adapter.py         # 领域识别与领域配置
 │   ├── self_evolve.py            # 从范文萃取候选句式（预览，确认后 --apply）
 │   └── validate_skill.py         # 维护者：校验 Skill 打包
 ├── references/
-│   ├── writing/                  # 按章节拆分：原则与句式、摘要/引言、相关工作/预备知识、方法/理论、实验、讨论/结论/伦理
+│   ├── writing/                  # 七条总原则；按章节拆分：原则与句式、摘要/引言、相关工作/预备知识、方法/理论、实验、讨论/结论/伦理
 │   ├── domains/                  # 标准化领域模板（统一 8 节结构）：security_privacy、llm_agent_security、machine_learning_fl、distributed_systems、nlp_llm
 │   ├── figures_and_captions.md   # 架构图、实验图、表格、Caption 规则与正反例
 │   ├── figure_styles/            # 分领域架构图风格（<领域>.json：字号、线宽、填充、角色颜色、拓扑）+ _bounds.json 取值范围

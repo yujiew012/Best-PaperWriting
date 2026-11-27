@@ -10,7 +10,7 @@ Candidates: the drafts of each skill version under test and, when available, the
 | D4 | Calibrated claims | over-claims (unsupported "first", "state-of-the-art", "eliminates") **or** hedges that undercut supported results | supported but timid, or partly inflated | the strongest claims the evidence supports, with numbers and scope |
 | D5 | Concreteness | adjectives and abstractions | some numbers | examples, mechanisms and numbers carry the argument |
 | D6 | Positioning | no prior work named | named, vague difference | the closest work named with a specific, checkable difference |
-| D7 | Flow and economy | repetitive; paragraphs restate each other | readable | every sentence adds something; short sentences at the pivots |
+| D7 | Flow and economy | repetitive; paragraphs restate each other; terms used before definition | readable, but new information often opens sentences | every sentence adds something; topic sentences carry the story; old-to-new flow; short sentences at the pivots |
 | D8 | Overall | a generic machine draft | a solid main-conference paper | as convincing as the best papers of the venue |
 
 Rules for the judge:

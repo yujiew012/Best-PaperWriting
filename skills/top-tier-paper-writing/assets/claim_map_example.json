@@ -4,6 +4,15 @@
   "motivation": "failure",
   "tension": "tradeoff",
   "handle": "transcribe, then judge",
+  "story": {
+    "what": "Multimodal models that read text rendered as images lose their safety refusals when the rendering is degraded.",
+    "why": "Vision-text compression is being deployed to cut the token cost of long contexts, so these inputs reach production models.",
+    "why_now": "Compression systems now render text at low resolution by design, and nobody has measured what this does to safety.",
+    "difficulty": "Safety failures must be separated from illegibility, and the effect must be shown across models and degradations.",
+    "method_insight": "Decoding degraded glyphs and judging intent compete for the same capacity; separating them restores the judgment.",
+    "results": "Refusals collapse in a band of legible resolutions on four models; a two-stage prompt restores them without hurting transcription.",
+    "contributions": "The vulnerability and its measurement; the capacity explanation with evidence; a defense that follows from it."
+  },
   "closest_work": [
     {
       "name": "Prompt-level safety filters",

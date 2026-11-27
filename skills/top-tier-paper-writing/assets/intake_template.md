@@ -3,6 +3,7 @@
 ## Required
 - **One-line claim**: We show that ... achieves ... in ..., because ...
 - **Task**: Given [input], we [estimate / generate / detect / defend] [output]. Uses: [A], [B].
+- **Why it matters, and why now**: [importance]; [what makes it urgent now: a deployment, a trend, a failure].
 - **Prior approach**: Most methods [mechanism]. They assume [assumption].
 - **Gap + reason**: When [condition], they [observable failure], because [technical reason].
 - **Method**: [Name]: (1) [component]: [mechanism]; (2) [component]: [mechanism].

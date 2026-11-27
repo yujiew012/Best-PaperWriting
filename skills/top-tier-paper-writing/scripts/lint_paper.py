@@ -26,6 +26,9 @@ Follows \\input / \\include / \\subfile from the main file and reports:
   W308  "Unlike X, we ..." compares a method with the authors                  warning
   W309  "although ..., but ..."                                              warning
   W310  copies a run of >= 6 words from the exemplar bank (references/exemplars/) warning
+  W311  acronym used before it is defined, or never defined ("never use a term before defining it") warning
+  W312  sentence of 60 or more words (one or two topics per sentence)        warning
+  W314  the same methods appear in a different order in two tables           warning
   W401  abstract length outside 150-250 words                               warning
   W402  conclusion length outside 120-200 words                             warning
   W403  a section the venue requires is missing (--venue, e.g. ACL Limitations) warning
@@ -75,6 +78,11 @@ WORKFLOW = [
     r"\[(?:intro|abstract|relwork|method|exp|eval)\.[a-z.-]+\]", r"\b(?:Paragraph|Para\.) \d+:",
     r"(?<!\$)→(?![^$]*\$)",
 ]
+# acronyms readers know without a definition (others must be defined at first use)
+KNOWN_ACRONYMS = {"AI", "ML", "GPU", "GPUs", "CPU", "TPU", "API", "URL", "PDF", "HTTP", "HTTPS", "SQL", "RAM", "OS",
+                  "ID", "IDs", "USA", "US", "UK", "EU", "OK", "PhD", "IEEE", "ACM", "ACL", "AAAI", "NeurIPS", "ICML",
+                  "ICLR", "CVPR", "ICCV", "ECCV", "USENIX", "NDSS", "CCS", "LaTeX", "PyTorch", "JSON", "CSV", "PNG",
+                  "II", "III", "IV", "VI", "VII", "VIII", "IX", "XI", "XII", "TODO", "GB", "MB", "KB", "TB", "GHz", "MHz"}
 SMALL_WORDS = {"a", "an", "the", "and", "but", "or", "nor", "for", "so", "yet", "as", "at", "by", "in", "of",
                "on", "to", "up", "via", "vs", "per", "with", "from", "into", "over", "than", "under"}
 
@@ -347,6 +355,65 @@ def run(main_tex, caption_style, num_threshold, disabled, required_sections=(), 
             lead = found[0].start()                       # point at the first reported number
             add("W303", body_start + pm.start() + lead,
                 f"paragraph quotes {len(nums)} numbers; keep 1-3 key numbers and let the table carry the rest")
+
+    # ---- seven-principles checks (references/writing/seven_principles.md) ------------------
+    prose_src = re.sub(r"\\begin\{(" + env_re + r"|equation\*?|align\*?|tabular\*?|algorithm\*?|lstlisting|verbatim)\}"
+                       r".*?\\end\{\1\}", lambda mm: " " * len(mm.group(0)), body, flags=re.S)
+    prose_src = re.sub(r"\$[^$]*\$|\\(?:cite\w*|ref|cref|Cref|autoref|eqref|label|url|href|texttt|includegraphics)"
+                       r"\*?(?:\[[^\]]*\])?\{[^}]*\}", lambda mm: " " * len(mm.group(0)), prose_src)
+    # P3: acronyms (2+ capitals, optional plural s) must be defined "... (ACR)" before or at first use
+    first_use, defined_at = {}, {}
+    for m in re.finditer(r"\(([A-Z][A-Za-z]*[A-Z][A-Za-z]*?)s?\)", prose_src):
+        defined_at.setdefault(m.group(1), m.start())
+    for m in re.finditer(r"(?<![\w\\-])([A-Z][A-Za-z]*?[A-Z][A-Za-z]*?)(?:s)?(?![\w-])", prose_src):
+        acr = m.group(1)
+        if acr in KNOWN_ACRONYMS or not re.search(r"[A-Z].*[A-Z]", acr) or acr.lower() == acr:
+            continue
+        if len(re.findall(r"[a-z]", acr)) > 2:      # CamelCase method names (PyTorch, FedAvg) are names, not acronyms
+            continue
+        first_use.setdefault(acr, []).append(m.start())
+    for acr, uses in first_use.items():
+        d = defined_at.get(acr)
+        if d is None:
+            if len(uses) >= 2:
+                add("W311", body_start + uses[0], f"'{acr}' is never defined; write the full term at first use: "
+                                                  f"'full term ({acr})'")
+        elif uses[0] < d - len(acr) - 2:
+            add("W311", body_start + uses[0], f"'{acr}' is used before its definition "
+                                              f"(defined at {doc.where(body_start + d)}); define it at first use")
+    # P5: sentences of 60+ words
+    for pm in re.finditer(r"(?:[^\n]|\n(?!\s*\n))+", prose_src):
+        para = pm.group(0)
+        for sm in re.finditer(r"[^.!?]+(?:[.!?](?=\s|$)|$)", para):
+            sent = plain(sm.group(0))
+            n_words = len(sent.split())
+            if n_words >= 60:
+                lead = len(sm.group(0)) - len(sm.group(0).lstrip())
+                add("W312", body_start + pm.start() + sm.start() + lead,
+                    f"sentence of {n_words} words; limit it to one or two topics and keep the verb next to the subject")
+    # P7: the same methods in the same order in every table
+    orders = []
+    for tm in re.finditer(r"\\begin\{tabular\*?\}(?:\{[^}]*\})+(.*?)\\end\{tabular\*?\}", body, re.S):
+        content = tm.group(1)
+        if "\\midrule" in content:                      # header rows end at the first \midrule
+            rows = re.split(r"\\\\", content.split("\\midrule", 1)[1])
+        else:
+            rows = re.split(r"\\\\", content)[1:]     # otherwise skip the first row
+        names = []
+        for r in rows:
+            r = re.sub(r"\\(?:toprule|midrule|bottomrule|hline|cline\{[^}]*\}|cmidrule(?:\([^)]*\))?\{[^}]*\})", "", r)
+            first = plain(r.split("&")[0]).strip()
+            if first and "&" in r and not re.fullmatch(r"[\d.\s%±-]+", first):
+                names.append(first)
+        orders.append((tm.start(), names))
+    for i, (pos_a, a) in enumerate(orders):
+        for pos_b, b in orders[i + 1:]:
+            shared = [x for x in a if x in b]
+            if len(shared) >= 3 and shared != [x for x in b if x in a]:
+                add("W314", body_start + pos_b, f"rows {', '.join(x for x in b if x in a)} appear in a different "
+                                                f"order than in the table at {doc.where(body_start + pos_a)}; keep one "
+                                                f"method order in every table and figure")
+                break
 
     # abstract / conclusion length
     m = re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}", text, re.S)
