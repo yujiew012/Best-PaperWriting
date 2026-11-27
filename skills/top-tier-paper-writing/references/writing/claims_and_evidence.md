@@ -14,6 +14,7 @@ Format: `assets/claim_map_example.json`. One entry per claim:
 
 | Field | Meaning |
 | :--- | :--- |
+| `story` (top level) | the 7W: `what`, `why`, `why_now`, `difficulty`, `method_insight`, `results`, `contributions` (`seven_principles.md` §1) |
 | `id` | `C1`, `C2`, ... |
 | `kind` | `gap`, `insight`, `method`, `result`, `advantage`, `stance`, `contribution` |
 | `text` | the claim as it will read in the paper |
@@ -24,6 +25,8 @@ Format: `assets/claim_map_example.json`. One entry per claim:
 | `where` | the **one** introduction paragraph that states it (`"intro:P4"`) |
 | `abstract` | `true` if the abstract states it too |
 | `method_section`, `experiment`, `ablation` | the evidence map: where the claim is realized, measured, and isolated |
+
+**List claims in presentation order, strongest evidence first** (`seven_principles.md` §6): within one paragraph, a `prove` claim comes before `show`, `show` before `causal`, `causal` before `observe`. `claim_map.py` warns when a stronger claim follows a weaker one.
 
 Every claim of kind `method` names its `method_section`; every `result` and `advantage` names its `experiment`; every design choice that a result depends on names an `ablation`. A claim with no evidence is either softened to `hypothesis`, or gets a `todo` that goes into the author report. An experiment that supports no claim moves to the appendix.
 

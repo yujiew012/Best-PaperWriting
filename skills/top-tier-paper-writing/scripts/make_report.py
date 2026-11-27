@@ -7,7 +7,7 @@
 
     uv run make_report.py --claims claim_map.json --tex paper/main.tex --out report.md \\
         [--figures figure_plan.json] [--numbers numbers.json] [--lint lint.json] [--style style.json] \\
-        [--changes changes.md]
+        [--changes changes.md] [--outline outline.md]
 
 Sections: the paper's claim and route; the claim map; open TODOs (claims without evidence, [TODO] markers,
 figure placeholders); check results (fabrication check, lint, style metrics); the figure plan; the change
@@ -57,6 +57,7 @@ def main(argv=None):
     ap.add_argument("--lint", help="JSON from lint_paper.py --json")
     ap.add_argument("--style", help="JSON from style_metrics.py --json")
     ap.add_argument("--changes", help="Markdown change table from change_table.py")
+    ap.add_argument("--outline", help="Markdown reverse outline from outline.py --md")
     ap.add_argument("--out", default="report.md")
     a = ap.parse_args(argv)
     cm = load(a.claims)
@@ -116,6 +117,13 @@ def main(argv=None):
         L += ["## 5. Figure plan", "", fplan.render(plan)]
         issues = fplan.check(plan, cm, a.tex if a.tex and os.path.exists(a.tex) else None)
         L += [f"- {l}: {m}" for l, m in issues if l != "NOTE"] + [""]
+    if a.outline:
+        if not os.path.exists(a.outline):
+            print(f"[error] not found: {a.outline}", file=sys.stderr)
+            return 2
+        L += ["## 5b. Reverse outline (read the topic sentences alone: do they tell the story?)", "",
+              re.sub(r"## Story \(claim map\).*?(?=## Reverse outline)", "",       # the story is already in §2
+                     open(a.outline, encoding="utf-8").read(), flags=re.S), ""]
     if a.changes and os.path.exists(a.changes):
         L += ["## 6. Change table (accept or reject each row)", "", open(a.changes, encoding="utf-8").read(), ""]
     L += ["## 7. Limitations notes", "", "Weaknesses, costs and settings where the method is not best; they belong in "

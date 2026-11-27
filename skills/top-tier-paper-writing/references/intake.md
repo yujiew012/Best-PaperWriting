@@ -26,6 +26,22 @@ Used by Branch A (and B for result claims). Ask for missing fields **once, in on
 | M7 | What it changes | what readers should believe afterwards (*X is unnecessary*, *the common explanation is wrong*) |
 | M8 | Limitations | failure cases and costs; they scope the claims and go into the report's Limitations notes |
 
+## 2b. The 7W: the questions the story answers
+
+Every paper is told around one thesis that answers seven questions (`writing/seven_principles.md` §1). The fields above already hold most answers; write them into the claim map's `story` block before drafting:
+
+| W | Question | From |
+| :--- | :--- | :--- |
+| `what` | What is the engineering or scientific problem? | R2 |
+| `why` | Why is it important? | R2, M6 |
+| `why_now` | What makes the research necessary and urgent now? | M4, M7 (a deployment, a trend, a failure) |
+| `difficulty` | What are the core difficulties? | R3, R4 |
+| `method_insight` | What is the method, its key insight, and why does it work? | R5, M1 |
+| `results` | What are the main results? | R6 |
+| `contributions` | What does the paper contribute? | R1, M7 |
+
+If an answer is missing, ask for it in the same single message as the other missing fields.
+
 ## 3. Follow-up rules
 
 - R4 has a limitation but no reason → ask: *What in the existing method causes this? What does it assume or compute that breaks?*

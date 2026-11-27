@@ -10,13 +10,15 @@
 
 Format: assets/claim_map_example.json; rules: references/writing/claims_and_evidence.md.
 
-  ERROR  duplicate or missing id; unknown kind/strength; a result/advantage/stance/contribution claim with
+  ERROR  malformed claim map (exit 2); duplicate or missing id; unknown kind/strength; a result/advantage/stance/contribution claim with
          neither evidence nor todo; a claim placed in more than one introduction paragraph ("say it once")
   WARN   wording stronger than the evidence (e.g. 'show' with one setting, 'causal' without an ablation,
          'prove' without a theorem); evidence-map gaps (method without method_section, result without
          experiment); headline numbers over budget; with --tex, more numbers in the abstract/introduction
          than the roles allow, or a claim id flagged abstract:true that has no headline/supporting number
-  NOTE   claims still marked todo (they go to the author report)
+  WARN   a 7W question of the 'story' block unanswered (Principle 1); in one paragraph, a stronger claim listed
+         after a weaker one: the claims' order is the presentation order (Principle 6, strongest evidence first)
+  NOTE   claims still marked todo (they go to the author report); no 'story' block
 
 Exit 1 on ERROR, 0 otherwise.
 """
@@ -26,6 +28,8 @@ import os
 import re
 import sys
 
+STORY = ("what", "why", "why_now", "difficulty", "method_insight", "results", "contributions")   # the 7W
+RANK = {"prove": 5, "show": 4, "causal": 3, "observe": 2, "hypothesis": 1}
 KINDS = ("gap", "insight", "method", "result", "advantage", "stance", "contribution")
 STRENGTHS = ("prove", "show", "causal", "observe", "hypothesis")
 ROLES = ("headline", "supporting", "table")
@@ -51,6 +55,9 @@ def shape_errors(cm):
             errs.append(f"claims[{i}] ({c.get('id')}): 'settings' must be an integer")
         if "where" in c and not isinstance(c["where"], (str, list)):
             errs.append(f"claims[{i}] ({c.get('id')}): 'where' must be a string such as \"intro:P3\"")
+    story = cm.get("story")
+    if story is not None and (not isinstance(story, dict) or any(not isinstance(v, str) for v in story.values())):
+        errs.append("'story' must be an object of strings keyed by " + ", ".join(STORY))
     nums = cm.get("numbers", [])
     if not isinstance(nums, list) or any(not isinstance(n, dict) for n in nums):
         errs.append("'numbers' must be a list of objects {value, role, claim}")
@@ -101,6 +108,26 @@ def check(cm, tex=None):
             add("WARN", f"{cid}: result claim without experiment (evidence map)")
         if c.get("todo"):
             add("NOTE", f"{cid}: TODO {c['todo']}")
+    # Principle 1: the 7W story the paper is told around
+    story = cm.get("story")
+    if story is None:
+        add("NOTE", "no 'story' block: answer the 7W (" + ", ".join(STORY) + ") before drafting "
+                    "(references/writing/seven_principles.md §1)")
+    else:
+        for k in STORY:
+            if not str(story.get(k, "")).strip():
+                add("WARN", f"story: '{k}' is not answered (seven_principles.md §1)")
+    # Principle 6: within one paragraph, evidence goes from the strongest to the weakest
+    by_place = {}
+    for c in claims:
+        if c.get("kind") in ("result", "advantage", "gap") and isinstance(c.get("where"), str):
+            by_place.setdefault(c["where"], []).append(c)
+    for place, cs in by_place.items():
+        for prev, cur in zip(cs, cs[1:]):
+            if RANK.get(cur.get("strength", "observe"), 0) > RANK.get(prev.get("strength", "observe"), 0):
+                add("WARN", f"{place}: {cur.get('id')} ({cur.get('strength')}) comes after the weaker "
+                            f"{prev.get('id')} ({prev.get('strength')}); present the strongest evidence first "
+                            f"(seven_principles.md §6)")
     nums = cm.get("numbers", [])
     for n in nums:
         if n.get("role") not in ROLES:
@@ -126,7 +153,9 @@ def check(cm, tex=None):
 
 
 def render(cm):
-    lines = ["| id | kind | claim | strength | evidence | where | method / experiment / ablation |",
+    story = cm.get("story") or {}
+    head = (["**Story (7W)**", ""] + [f"- **{k}:** {story.get(k, '**missing**')}" for k in STORY] + [""]) if story else []
+    lines = head + ["| id | kind | claim | strength | evidence | where | method / experiment / ablation |",
              "| :--- | :--- | :--- | :--- | :--- | :--- | :--- |"]
     for c in cm.get("claims", []):
         ev = ", ".join(str(e) for e in c.get("evidence", [])) or f"**TODO**: {c.get('todo', '')}"

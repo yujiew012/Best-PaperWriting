@@ -25,6 +25,9 @@
 | W308 | warn | *Unlike X, we …*（拿方法和作者比较） | 改为 *Unlike X, our method …* |
 | W309 | warn | *although …, but …* | 删掉 *but* |
 | W310 | warn | 与范例库（`references/exemplars/`）共享 ≥ 6 个连续词 | 范例只学结构与节奏，重写该句 |
+| W311 | warn | 缩写在定义之前使用，或全文从未定义（“术语先定义后使用”，七原则 §3） | 首次出现处写全称并在括号中给出缩写：*multimodal large language models (MLLMs)*；摘要与正文各定义一次 |
+| W312 | warn | 句子达到 60 词（七原则 §5） | 每句只讲一到两个主题，谓语紧跟主语；拆成两句，长修饰语移到主句之后 |
+| W314 | warn | 同一批方法在两张表中的行顺序不同（七原则 §7） | 全文固定一个方法顺序（所有表与图一致） |
 | W401 | warn | 摘要不在 150–250 词 | 按 5 句骨架增删（见 `writing/abstract_and_introduction.md`） |
 | W402 | warn | 结论不在 120–200 词 | 两段式：总结 + 具体的未来方向（见 `writing/discussion_conclusion_ethics.md`） |
 | W403 | warn | 会议要求的章节缺失（`--venue`，如 ACL 的 Limitations） | 按 `references/venues.json` 中该会议的 `required_sections` 补上 |
