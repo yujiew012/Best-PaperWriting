@@ -182,9 +182,9 @@
     "elsevier": {
       "name": "Elsevier journals (elsarticle), e.g. Computer Networks, Computers & Security",
       "columns": 2,
-      "column_width_in": 3.54,
+      "column_width_in": 3.49,
       "onehalf_width_in": 5.51,
-      "text_width_in": 7.48,
+      "text_width_in": 7.22,
       "body_font": "elsarticle preprint 12pt (submission); final typesetting by the publisher",
       "class_files": [
         "elsarticle.cls"
@@ -201,7 +201,7 @@
         "Data availability"
       ],
       "page_limit": null,
-      "notes": "Widths are the publisher's artwork sizes for the printed page: 90 mm single column, 140 mm 1.5 columns, 190 mm full width; the submission itself is usually the single-column preprint ([preprint,12pt]{elsarticle}), where figures are scaled to the text width. Highlights (3-5 bullets of at most 85 characters) usually go in a separate file and keywords in the keyword environment. Declarations, the CRediT statement and the data statement are journal-specific: confirm them and any length limits against the journal's guide for authors.",
+      "notes": "Widths are those of the elsarticle 5p two-column layout that authors compile with (\\columnwidth 252 pt = 3.49 in, \\textwidth 522 pt = 7.22 in), so figures need no scaling in LaTeX; the 1.5-column width (5.51 in) is the publisher's 140 mm artwork size. The publisher's own artwork sizes are 90 / 140 / 190 mm; for a single-column preprint ([preprint,12pt]{elsarticle}) figures are scaled to the text width. Highlights (3-5 bullets of at most 85 characters) usually go in a separate file and keywords in the keyword environment. Declarations, the CRediT statement and the data statement are journal-specific: confirm them and any length limits against the journal's guide for authors.",
       "caption_content": "neutral"
     }
   }
