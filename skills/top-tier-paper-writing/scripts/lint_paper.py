@@ -48,6 +48,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from texpaths import resolve_input  # noqa: E402
+
 REF_CMDS = r"(?:ref|autoref|cref|Cref|vref|Vref|eqref|pageref|labelcref|nameref)\*?"
 FLOAT_ENVS = ("figure", "figure*", "table", "table*", "wrapfigure", "wraptable")
 VAGUE = [
@@ -106,14 +109,14 @@ def strip_comment(line):
     return "".join(out)
 
 
-def load(path, seen=None):
+def load(path, seen=None, root=None):
     """Return list of (file, lineno, text) with inputs expanded and comments removed."""
     seen = seen or set()
     path = os.path.abspath(path)
+    root = root or os.path.dirname(path)
     if path in seen:
         return []
     seen.add(path)
-    base = os.path.dirname(path)
     out = []
     with open(path, encoding="utf-8", errors="replace") as f:
         for no, line in enumerate(f, 1):
@@ -121,14 +124,12 @@ def load(path, seen=None):
             m = (re.search(r"\\(?:input|include|subfile|@@input|InputIfFileExists)\{([^}]+)\}", line)
                  or re.search(r"\\(?:input|@@input)\s+([\w./-]+\.tex)\b", line))
             if m:
-                inc = os.path.join(base, m.group(1).strip())
-                if not inc.endswith(".tex"):
-                    inc += ".tex"
+                inc = resolve_input(m.group(1), path, root)
                 before, after = line[:m.start()], line[m.end():]
                 if before.strip():
                     out.append((path, no, before))
                 if os.path.exists(inc):
-                    out.extend(load(inc, seen))
+                    out.extend(load(inc, seen, root))
                 else:
                     out.append((path, no, f"%MISSING-INPUT {m.group(1)}"))
                 if after.strip():
@@ -365,9 +366,12 @@ def run(main_tex, caption_style, num_threshold, disabled, required_sections=(), 
     first_use, defined_at = {}, {}
     for m in re.finditer(r"\(([A-Z][A-Za-z]*[A-Z][A-Za-z]*?)s?\)", prose_src):
         defined_at.setdefault(m.group(1), m.start())
-    for m in re.finditer(r"(?<![\w\\-])([A-Z][A-Za-z]*?[A-Z][A-Za-z]*?)(?:s)?(?![\w-])", prose_src):
-        acr = m.group(1)
-        if acr in KNOWN_ACRONYMS or not re.search(r"[A-Z].*[A-Z]", acr) or acr.lower() == acr:
+    # a name introduced with its citation ("FLAME~\cite{...}", "RING [12]") names a cited system or
+    # dataset; it is not an acronym the paper must expand
+    cited_names = set(re.findall(r"(?<![\w\\-])([A-Z][A-Za-z]*?[A-Z][A-Za-z]*?)s?\s*~?\s*\(?\\cite\w*", body))
+    for m in re.finditer(r"(?<![\w\\-])([A-Z][A-Za-z]*?[A-Z][A-Za-z]*?)(?:s)?(?![\w-]|\\_)", prose_src):
+        acr = m.group(1)                    # (?!\\_): TON\_IoT is one identifier, not the acronym TON
+        if acr in KNOWN_ACRONYMS or acr in cited_names or not re.search(r"[A-Z].*[A-Z]", acr) or acr.lower() == acr:
             continue
         if len(re.findall(r"[a-z]", acr)) > 2:      # CamelCase method names (PyTorch, FedAvg) are names, not acronyms
             continue

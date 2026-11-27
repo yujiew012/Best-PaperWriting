@@ -72,7 +72,27 @@ def describe(runs, report, nd, sign):
 
 
 def fmt(x, nd):
-    return f"{x:.{nd}f}"
+    return f"{_zero(x, nd):.{nd}f}"
+
+
+def sfmt(x, nd):
+    """Signed format without a negative zero ("-0.00" reads as a loss that is not there)."""
+    return f"{_zero(x, nd):+.{nd}f}"
+
+
+def _zero(x, nd):
+    return 0.0 if round(x, nd) == 0 else x
+
+
+def auto_digits(runs):
+    """Enough decimals to show two significant digits of the smallest non-zero value (2..6).
+
+    A fixed two decimals hides every difference between rates such as 0.001 and 0.002."""
+    import math
+    values = [abs(v) for methods in runs.values() for vals in methods.values() for v in vals if v]
+    if not values:
+        return 2
+    return max(2, min(6, 1 - math.floor(math.log10(min(values)))))
 
 
 def main(argv=None):
@@ -81,11 +101,13 @@ def main(argv=None):
     ap.add_argument("--ours", help="our method in the 'method' column (omit for measurement papers)")
     ap.add_argument("--lower-better", action="store_true", help="smaller values are better")
     ap.add_argument("--drop", nargs=2, metavar=("BEFORE", "AFTER"), help="per-method change between two settings")
-    ap.add_argument("--digits", type=int, default=2)
+    ap.add_argument("--digits", type=int, default=None,
+                    help="decimals in the printed report (default: enough for the smallest non-zero value)")
     ap.add_argument("--json")
     args = ap.parse_args(argv)
     runs = load(args.data)
-    nd, sign = args.digits, (-1 if args.lower_better else 1)
+    nd = args.digits if args.digits is not None else auto_digits(runs)
+    sign = -1 if args.lower_better else 1
     report = {"source": os.path.abspath(args.data), "ours": args.ours,
               "direction": "lower is better" if args.lower_better else "higher is better", "settings": []}
 
@@ -118,7 +140,7 @@ def main(argv=None):
         report["settings"].append(entry)
         ours_s = fmt(o[0], nd) + (f"±{fmt(o[1], nd)}" if o[1] is not None else "")
         bb = f"{entry.get('best_baseline', '-')} {fmt(entry['best_baseline_mean'], nd)}" if base else "-"
-        mg = f"{entry['margin']:+.{nd}f}" if base else "-"
+        mg = sfmt(entry["margin"], nd) if base else "-"
         print(f"{setting:24s} {ours_s:>14s} {bb:>24s} {mg:>8s} {entry['rank']}/{entry['n_methods']}")
 
     with_margin = [s for s in report["settings"] if "margin" in s]
@@ -130,7 +152,7 @@ def main(argv=None):
         summary = {"margin_min": min(margins), "margin_max": max(margins),
                    "hardest_setting": hardest["setting"], "ours_not_best_in": not_best, "ours_tied_best_in": tied}
         report["summary"] = summary
-        print(f"\nmargin over best baseline: {min(margins):+.{nd}f} to {max(margins):+.{nd}f}"
+        print(f"\nmargin over best baseline: {sfmt(min(margins), nd)} to {sfmt(max(margins), nd)}"
               f"  (positive = ours better)")
         print(f"hardest setting for ours: {hardest['setting']} ({fmt(hardest['ours_mean'], nd)})")
         print("ours is NOT best in: " + (", ".join(not_best) if not_best else "none")
@@ -152,7 +174,7 @@ def main(argv=None):
                                      "rel_pct": (vb - va) / va * 100 if va else None,
                                      "ratio": vb / va if va else None}
                 rel = f"{(vb - va) / va * 100:+.{nd}f}%" if va else "n/a"
-                print(f"  {m:20s} {fmt(va, nd)} -> {fmt(vb, nd)}  ({vb - va:+.{nd}f} abs, {rel} rel)")
+                print(f"  {m:20s} {fmt(va, nd)} -> {fmt(vb, nd)}  ({sfmt(vb - va, nd)} abs, {rel} rel)")
         missing = [m for m in set(runs[a]) ^ set(runs[b])]
         if missing:
             print(f"  (only in one of the two settings, skipped: {', '.join(sorted(missing))})")
@@ -169,7 +191,7 @@ def main(argv=None):
                                       "rel_pct_min": min(rels) if rels else None,
                                       "rel_pct_max": max(rels) if rels else None, "exceptions": exceptions}
             print(f"\nsummary: {len(up)} increase, {len(down)} decrease, {len(same)} unchanged "
-                  f"(of {len(ch)}); change {min(ch.values()):+.{nd}f} to {max(ch.values()):+.{nd}f} abs"
+                  f"(of {len(ch)}); change {sfmt(min(ch.values()), nd)} to {sfmt(max(ch.values()), nd)} abs"
                   + (f", {min(rels):+.{nd}f}% to {max(rels):+.{nd}f}% rel" if rels else ""))
             print("against the majority (" + majority + "): "
                   + (", ".join(m + (" (unchanged)" if m in same else "") for m in exceptions) if exceptions else "none")

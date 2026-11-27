@@ -9,7 +9,8 @@ For each PDF:
   F1  page width matches a column format -> error. Default (IEEE): single 3.3-3.5 in,
       double 6.8-7.0 in (1.5-column 4.8-5.2 in with --allow-onehalf). With
       --venue NAME the venue's column and text widths from references/venues.json
-      are used (+/- 0.1 in).
+      are used (+/- 0.1 in); a venue with a publisher-defined 1.5-column width
+      (onehalf_width_in, e.g. elsevier) accepts that width without the flag.
   F2  no Type 3 fonts (bitmap-like, rejected by IEEE PDF eXpress)    -> error
   F3  fonts are embedded (every font has a FontFile stream)          -> warning
   F4  the file is a vector PDF (not a single embedded raster image)  -> warning
@@ -55,8 +56,15 @@ def venue_ranges(name):
     v = venues[name]
     out = {"single": (v["column_width_in"] - 0.1, v["column_width_in"] + 0.1),
            "double": (v["text_width_in"] - 0.1, v["text_width_in"] + 0.1),
-           "onehalf": (0.6 * v["text_width_in"], 0.85 * v["text_width_in"])}
+           "onehalf": ((v["onehalf_width_in"] - 0.1, v["onehalf_width_in"] + 0.1) if "onehalf_width_in" in v
+                       else (0.6 * v["text_width_in"], 0.85 * v["text_width_in"]))}
     return out
+
+
+def venue_has_onehalf(name):
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "references", "venues.json")
+    with open(path, encoding="utf-8") as f:
+        return "onehalf_width_in" in json.load(f)["venues"].get(name, {})
 
 
 def check(path, allow_onehalf, ranges=None):
@@ -82,7 +90,8 @@ def check(path, allow_onehalf, ranges=None):
             want = ", ".join(f"{k} {lo:.2f}-{hi:.2f}" for k, (lo, hi) in ranges.items()
                              if k != "onehalf" or allow_onehalf)
             res["errors"].append(f"F1 width {w:.2f} in matches no column format ({want}); regenerate with "
-                                 f"--layout (and --venue)")
+                                 f"--layout (and --venue)"
+                                 + ("" if allow_onehalf else ", or pass --allow-onehalf for a 1.5-column figure"))
     if pages > 1:
         res["warnings"].append(f"{pages} pages; a figure PDF should have exactly one")
 
@@ -113,7 +122,9 @@ def main(argv=None):
     ap.add_argument("--json", help="write the report to this path")
     args = ap.parse_args(argv)
     ranges = venue_ranges(args.venue) if args.venue else None
-    report = [check(p, args.allow_onehalf, ranges) for p in args.pdfs]
+    # venues whose publisher defines a 1.5-column size (onehalf_width_in) accept it without the flag
+    allow_onehalf = args.allow_onehalf or bool(args.venue and venue_has_onehalf(args.venue))
+    report = [check(p, allow_onehalf, ranges) for p in args.pdfs]
     n_err = 0
     for r in report:
         status = "FAIL" if r["errors"] else ("WARN" if r["warnings"] else " ok ")

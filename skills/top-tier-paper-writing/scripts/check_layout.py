@@ -16,7 +16,8 @@ SKILL.md:
       float at the top of the page always counts as before).
   R2  A full-width float (figure*/table*) can appear at the earliest on the
       page AFTER the one where it is defined, so its first reference must fall
-      on that page or later (otherwise: move the definition earlier).
+      on that page or later (otherwise: move the definition earlier). Two-column
+      layouts only: in a one-column document figure*/table* float like figure/table.
   R3  Column bottoms should not have large voids (detected heuristically via
       "Underfull \\vbox ... while \\output is active" in the log).
 
@@ -176,8 +177,10 @@ def check_floats(geom: Geometry, floats: Dict[str, FloatInfo], refs: Dict[str, L
         fl.first_ref = min(rlist, key=lambda p: reading_key(p, geom))
         r, f = fl.first_ref, fl.pos
 
-        # R2: full-width floats
-        if fl.starred and fl.defpos is not None:
+        # R2: full-width floats; only in two-column layouts -- in a one-column document
+        # (e.g. an elsarticle preprint) figure*/table* behave like figure/table
+        full_width = fl.starred and geom.twocolumn
+        if full_width and fl.defpos is not None:
             earliest = fl.defpos.phys + 1
             if r.phys < earliest:
                 fl.status = "error"
@@ -202,7 +205,7 @@ def check_floats(geom: Geometry, floats: Dict[str, FloatInfo], refs: Dict[str, L
                 fl.status = "warning"
             fl.messages.append(
                 f"R1: placed on p.{f.page}, a page BEFORE its first reference on p.{r.page}")
-        elif not fl.starred:
+        elif not full_width:
             fc, rc = geom.column(f), geom.column(r)
             if fc > rc or (fc == rc and f.y < r.y):
                 if fl.status != "error":

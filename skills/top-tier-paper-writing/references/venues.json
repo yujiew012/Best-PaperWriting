@@ -178,6 +178,31 @@
       "page_limit": null,
       "notes": "Limits are set per conference and usually include references.",
       "caption_content": "neutral"
+    },
+    "elsevier": {
+      "name": "Elsevier journals (elsarticle), e.g. Computer Networks, Computers & Security",
+      "columns": 2,
+      "column_width_in": 3.54,
+      "onehalf_width_in": 5.51,
+      "text_width_in": 7.48,
+      "body_font": "elsarticle preprint 12pt (submission); final typesetting by the publisher",
+      "class_files": [
+        "elsarticle.cls"
+      ],
+      "font_packages": [],
+      "caption_case": {
+        "figure": "sentence",
+        "table": "sentence"
+      },
+      "required_sections": [],
+      "recommended_sections": [
+        "Declaration of competing interest",
+        "CRediT authorship contribution statement",
+        "Data availability"
+      ],
+      "page_limit": null,
+      "notes": "Widths are the publisher's artwork sizes for the printed page: 90 mm single column, 140 mm 1.5 columns, 190 mm full width; the submission itself is usually the single-column preprint ([preprint,12pt]{elsarticle}), where figures are scaled to the text width. Highlights (3-5 bullets of at most 85 characters) usually go in a separate file and keywords in the keyword environment. Declarations, the CRediT statement and the data statement are journal-specific: confirm them and any length limits against the journal's guide for authors.",
+      "caption_content": "neutral"
     }
   }
 }

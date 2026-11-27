@@ -31,7 +31,7 @@ def venue_widths(name):
     if not v:
         return dict(WIDTHS)
     return {"single": v["column_width_in"], "double": v["text_width_in"],
-            "onehalf": round(0.72 * v["text_width_in"], 2)}
+            "onehalf": v.get("onehalf_width_in", round(0.72 * v["text_width_in"], 2))}
 DEFAULT_HEIGHTS = {"single": 2.4, "double": 2.8, "onehalf": 3.2}
 
 OKABE_ITO = {

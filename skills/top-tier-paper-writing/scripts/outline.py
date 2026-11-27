@@ -25,13 +25,17 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from texpaths import expand_simple_macros, refs_to_text, resolve_input  # noqa: E402
+
 SECTION = re.compile(r"\\(section|subsection|subsubsection)\*?(?:\[[^\]]*\])?\{((?:[^{}]|\{[^{}]*\})*)\}")
 TOPIC_MAX = 35
 
 
-def read(path, seen=None):
+def read(path, seen=None, root=None):
     seen = seen or set()
     path = os.path.abspath(path)
+    root = root or os.path.dirname(path)
     if path in seen or not os.path.exists(path):
         return ""
     seen.add(path)
@@ -40,8 +44,7 @@ def read(path, seen=None):
         line = re.sub(r"(?<!\\)%.*", "", line)
         m = re.search(r"\\(?:input|include)\{([^}]+)\}", line)
         if m:
-            inc = os.path.join(os.path.dirname(path), m.group(1))
-            line = line[:m.start()] + "\n\n" + read(inc if inc.endswith(".tex") else inc + ".tex", seen) + "\n\n" \
+            line = line[:m.start()] + "\n\n" + read(resolve_input(m.group(1), path, root), seen, root) + "\n\n" \
                 + line[m.end():]
         out.append(line)
     return "".join(out)
@@ -50,7 +53,7 @@ def read(path, seen=None):
 def plain(t):
     t = re.sub(r"\$[^$]*\$", "X", t)
     t = re.sub(r"\\(?:cite\w*|label)\*?(?:\[[^\]]*\])?\{[^}]*\}", "", t)
-    t = re.sub(r"\\c?ref\{[^}]*\}", "1", t)
+    t = refs_to_text(t)
     t = re.sub(r"\\(?:textbf|textit|emph|text|textsc|mathrm)\{([^{}]*)\}", r"\1", t)
     t = re.sub(r"\\[A-Za-z]+\*?", "", t).replace("{", "").replace("}", "").replace("~", " ")
     t = " ".join(t.split())
@@ -162,7 +165,7 @@ def main(argv=None):
         except (OSError, json.JSONDecodeError, AttributeError) as e:
             print(f"[error] cannot read {a.claims}: {e}", file=sys.stderr)
             return 2
-    text = read(a.tex)
+    text = expand_simple_macros(read(a.tex))
     nodes = parse(text)
     if not nodes:
         print("[error] no abstract or sections found", file=sys.stderr)

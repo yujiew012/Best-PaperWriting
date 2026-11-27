@@ -16,6 +16,8 @@ legend), e.g. one panel per model.
     uv run plot_data_curves.py --data sweep.csv --ours Ours --mark-best max --out fig_sens.pdf
     # two-phase stress test: dashed separator at x=100
     uv run plot_data_curves.py --data stress.csv --ours Ours --phase-split 100 --out fig_phase.pdf
+    # panels that sweep different parameters: --free-x, one x label per panel
+    uv run plot_data_curves.py --data two_sweeps.csv --free-x --xlabel "Noise level c" "Fraction rho" --out fig.pdf
     # small multiples on a reversed log axis with a shaded, labelled regime
     uv run plot_data_curves.py --data sweep.csv --logx --invert-x --band 30 90 "vulnerable band" \
         --ncols 4 --venue acl --xlabel "Resolution (DPI)" --ylabel "ASR" --out fig_sweep.pdf
@@ -66,7 +68,8 @@ def main(argv=None):
     src.add_argument("--demo", action="store_true", help="plot the bundled example data (NOT for papers)")
     ap.add_argument("--out", required=True, help="output PDF path (a PNG preview is written next to it)")
     ap.add_argument("--ours", help="method name to highlight (blue, solid, drawn on top)")
-    ap.add_argument("--xlabel", default="x")
+    ap.add_argument("--xlabel", nargs="+", default=["x"],
+                    help="x-axis label; with --free-x one label per panel (in panel order) is allowed")
     ap.add_argument("--ylabel", default="value")
     ap.add_argument("--layout", choices=["single", "double", "onehalf"], default="single")
     ap.add_argument("--height", type=float, help="figure height in inches")
@@ -84,6 +87,8 @@ def main(argv=None):
     ap.add_argument("--invert-x", action="store_true", help="x decreases to the right (e.g. resolution)")
     ap.add_argument("--band", nargs=3, action="append", metavar=("X1", "X2", "LABEL"), default=[],
                     help="shade the x-range [X1, X2] and label it (repeatable)")
+    ap.add_argument("--free-x", action="store_true",
+                    help="panels keep their own x axis (panels that sweep different parameters)")
     ap.add_argument("--ncols", type=int, default=0,
                     help="panels per row when the CSV has a 'panel' column (default: up to 4)")
     args = ap.parse_args(argv)
@@ -109,7 +114,11 @@ def main(argv=None):
     nrows = math.ceil(n / ncols)
     layout = args.layout if n == 1 else ("double" if args.layout == "single" else args.layout)
     fw, fh = apply_style(layout, args.height or (2.4 if n == 1 else 1.7 * nrows + 0.5), args.venue)
-    fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True, squeeze=False)
+    if len(args.xlabel) not in (1, n):
+        fail(f"--xlabel takes one label or one per panel ({n}); got {len(args.xlabel)}")
+    if len(args.xlabel) > 1 and not args.free_x:
+        fail("one x label per panel needs --free-x (panels with a shared x axis share its label)")
+    fig, axes = plt.subplots(nrows, ncols, sharex=not args.free_x, sharey=True, squeeze=False)
     styles = series_styles(methods, args.ours, tuple(args.adverse))
     warned = set()
 
@@ -162,20 +171,27 @@ def main(argv=None):
             ax.xaxis.set_major_locator(FixedLocator(xs_all))
             ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}"))
             ax.xaxis.set_minor_formatter(NullFormatter())
-        if pi // ncols == nrows - 1:
-            ax.set_xlabel(args.xlabel)
+        if args.free_x or pi // ncols == nrows - 1:
+            ax.set_xlabel(args.xlabel[pi] if len(args.xlabel) > 1 else args.xlabel[0])
         if pi % ncols == 0:
             ax.set_ylabel(args.ylabel)
     for k in range(n, nrows * ncols):        # hide unused panels
         axes[k // ncols][k % ncols].axis("off")
     ax0 = axes[0][0]
-    if args.xlim:
-        ax0.set_xlim(*args.xlim)
-    if args.invert_x:
-        ax0.invert_xaxis()                   # shared x: inverts every panel
+    x_axes = [axes[k // ncols][k % ncols] for k in range(n)] if args.free_x else [ax0]
+    for ax in x_axes:
+        if args.xlim:
+            ax.set_xlim(*args.xlim)
+        if args.invert_x:
+            ax.invert_xaxis()                # shared x: inverting the first panel inverts every panel
     if args.ylim:
         ax0.set_ylim(*args.ylim)
-    handles, labels = ax0.get_legend_handles_labels()
+    handles, labels = [], []                 # every panel: a method may appear only in later panels
+    for k in range(n):
+        for h, lab in zip(*axes[k // ncols][k % ncols].get_legend_handles_labels()):
+            if lab not in labels:
+                handles.append(h)
+                labels.append(lab)
     if args.ours in labels:   # put ours first in the legend
         i = labels.index(args.ours)
         handles.insert(0, handles.pop(i))

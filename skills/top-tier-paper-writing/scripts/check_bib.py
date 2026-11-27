@@ -197,9 +197,14 @@ def main(argv=None):
             acr = unprotected_acronyms(title)
             if acr:
                 add("B103", where, f"protect with braces so the style keeps capitals: {', '.join(acr)}")
-        venue = " ".join(fields.get(k, "") for k in ("journal", "booktitle", "publisher", "eprinttype",
-                                                     "archiveprefix", "howpublished", "url", "note"))
-        if re.search(r"arxiv|corr\b", venue, re.I) or fields.get("eprint"):
+        # a preprint has no peer-reviewed venue; an arXiv number in a note, url or eprint field of an
+        # entry that names its journal or proceedings is a pointer to a free copy, not a preprint
+        published = " ".join(fields.get(k, "") for k in ("journal", "booktitle")).strip()
+        if published and not re.search(r"arxiv|corr\b", published, re.I):
+            pass
+        elif re.search(r"arxiv|corr\b", " ".join(fields.get(k, "") for k in (
+                "journal", "booktitle", "publisher", "eprinttype", "archiveprefix", "howpublished", "url", "note")),
+                re.I) or fields.get("eprint"):
             add("B104", where, "preprint: check DBLP / Google Scholar for a peer-reviewed version and cite that")
 
     if args.aux or args.tex:
