@@ -411,7 +411,12 @@ def run(main_tex, caption_style, num_threshold, disabled, required_sections=(), 
         names = []
         for r in rows:
             r = re.sub(r"\\(?:toprule|midrule|bottomrule|hline|cline\{[^}]*\}|cmidrule(?:\([^)]*\))?\{[^}]*\})", "", r)
-            first = plain(r.split("&")[0]).strip()
+            raw = r.split("&")[0].strip()
+            first = plain(raw).strip()
+            # rows labelled by mathematics only (notation tables, settings such as $\alpha=10^{-4}$) are
+            # not method names: plain() reduces all of them to the same placeholder
+            if re.fullmatch(r"(?:\$[^$]*\$[\s,;]*)+", raw):
+                continue
             if first and "&" in r and not re.fullmatch(r"[\d.\s%±-]+", first):
                 names.append(first)
         orders.append((tm.start(), names))
