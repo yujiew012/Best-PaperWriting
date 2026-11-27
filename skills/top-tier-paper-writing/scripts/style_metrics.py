@@ -32,6 +32,9 @@ import statistics
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from texpaths import expand_simple_macros, refs_to_text, resolve_input  # noqa: E402
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 CORPUS = os.path.join(HERE, "..", "references", "style_corpus")
 GENERAL = "general"
@@ -160,9 +163,10 @@ def metrics(paras):
 # extraction
 # ---------------------------------------------------------------------------
 
-def read_tex(path, seen=None):
+def read_tex(path, seen=None, root=None):
     seen = seen or set()
     path = os.path.abspath(path)
+    root = root or os.path.dirname(path)
     if path in seen or not os.path.exists(path):
         return ""
     seen.add(path)
@@ -171,8 +175,7 @@ def read_tex(path, seen=None):
         line = re.sub(r"(?<!\\)%.*", "", line)
         m = re.search(r"\\(?:input|include)\{([^}]+)\}", line)
         if m:
-            inc = os.path.join(os.path.dirname(path), m.group(1))
-            out.append(line[:m.start()] + read_tex(inc if inc.endswith(".tex") else inc + ".tex", seen)
+            out.append(line[:m.start()] + read_tex(resolve_input(m.group(1), path, root), seen, root)
                        + line[m.end():])
         else:
             out.append(line)
@@ -183,8 +186,7 @@ def tex_to_text(t):
     t = re.sub(r"\\begin\{(figure|table|equation|align|algorithm)\*?\}.*?\\end\{\1\*?\}", " ", t, flags=re.S)
     t = re.sub(r"\\(?:todo|TODO)\{(?:[^{}]|\{[^{}]*\})*\}|\[TODO[^\]]*\]", " ", t)
     t = re.sub(r"\\cite[tp]?\*?(\[[^\]]*\])?\{[^}]*\}", "[c]", t)
-    t = re.sub(r"(?:Fig|Tab|Sec|Eq)\.?~?\\c?ref\{[^}]*\}", "Figure 1", t)
-    t = re.sub(r"\\c?ref\{[^}]*\}", "1", t)
+    t = refs_to_text(t)
     t = re.sub(r"\\(?:label|section|subsection|paragraph)\*?\{[^}]*\}", "", t)
     t = re.sub(r"\\item\s*", "\n\n", t)
     t = t.replace("---", "—").replace("--", "–").replace("``", "“").replace("''", "”").replace("~", " ")
@@ -200,7 +202,7 @@ def paragraphs(text):
 
 
 def from_tex(path):
-    raw = read_tex(path)
+    raw = expand_simple_macros(read_tex(path))
     secs = {}
     m = re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}", raw, re.S)
     if m:

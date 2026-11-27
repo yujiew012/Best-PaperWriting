@@ -29,6 +29,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from texpaths import resolve_input  # noqa: E402
+
 NUM = re.compile(r"(?<![\w.\-–])[-+−]?\d+(?:,\d{3})*(?:\.\d+)?(?![\w.]*\d)\s*(?:\\?%|×|x\b|pp\b|percentage points?\b|points?\b)?")
 TEXT_EXT = (".csv", ".tsv", ".json", ".txt", ".md", ".tex", ".log", ".yaml", ".yml")
 
@@ -48,9 +51,10 @@ def decimals(s):
 # draft
 # ---------------------------------------------------------------------------
 
-def read_tex(path, seen=None):
+def read_tex(path, seen=None, root=None):
     seen = seen or set()
     path = os.path.abspath(path)
+    root = root or os.path.dirname(path)
     if path in seen or not os.path.exists(path):
         return []
     seen.add(path)
@@ -59,8 +63,7 @@ def read_tex(path, seen=None):
         line = re.sub(r"(?<!\\)%.*", "", line.rstrip("\n"))
         m = re.search(r"\\(?:input|include)\{([^}]+)\}", line)
         if m:
-            inc = os.path.join(os.path.dirname(path), m.group(1))
-            out += read_tex(inc if inc.endswith(".tex") else inc + ".tex", seen)
+            out += read_tex(resolve_input(m.group(1), path, root), seen, root)
             continue
         out.append((os.path.basename(path), no, line))
     return out

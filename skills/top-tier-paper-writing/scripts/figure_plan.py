@@ -24,6 +24,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from texpaths import resolve_input  # noqa: E402
+
 STATUS = ("draw", "placeholder", "done")
 TYPES = ("diagnosis", "contrast-schematic", "contrast-results", "showcase", "concept", "plot", "system", "resource",
          "overview", "qualitative", "ablation", "table", "other")
@@ -95,9 +98,10 @@ def check(plan, claims=None, tex=None):
     return out
 
 
-def read(path, seen=None):
+def read(path, seen=None, root=None):
     seen = seen or set()
     path = os.path.abspath(path)
+    root = root or os.path.dirname(path)
     if path in seen or not os.path.exists(path):
         return ""
     seen.add(path)
@@ -106,8 +110,7 @@ def read(path, seen=None):
         line = re.sub(r"(?<!\\)%.*", "", line)
         m = re.search(r"\\(?:input|include)\{([^}]+)\}", line)
         if m:
-            inc = os.path.join(os.path.dirname(path), m.group(1))
-            line = line[:m.start()] + read(inc if inc.endswith(".tex") else inc + ".tex", seen) + line[m.end():]
+            line = line[:m.start()] + read(resolve_input(m.group(1), path, root), seen, root) + line[m.end():]
         out.append(line)
     return "".join(out)
 
