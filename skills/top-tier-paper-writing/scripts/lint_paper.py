@@ -360,6 +360,11 @@ def run(main_tex, caption_style, num_threshold, disabled, required_sections=(), 
     # ---- seven-principles checks (references/writing/seven_principles.md) ------------------
     prose_src = re.sub(r"\\begin\{(" + env_re + r"|equation\*?|align\*?|tabular\*?|algorithm\*?|lstlisting|verbatim)\}"
                        r".*?\\end\{\1\}", lambda mm: " " * len(mm.group(0)), body, flags=re.S)
+    # author metadata is not prose: names, addresses and institution names ("... Emergency IoT in
+    # Underground Space") would count as long sentences and undefined acronyms
+    prose_src = re.sub(r"\\(?:author|affiliation|address|affil|institution|ead|email|cortext|tnotetext|fntext|"
+                       r"thanks|IEEEauthorblock[NA])\*?(?:\[[^\]]*\])*\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}",
+                       lambda mm: " " * len(mm.group(0)), prose_src)
     prose_src = re.sub(r"\$[^$]*\$|\\(?:cite\w*|ref|cref|Cref|autoref|eqref|label|url|href|texttt|includegraphics)"
                        r"\*?(?:\[[^\]]*\])?\{[^}]*\}", lambda mm: " " * len(mm.group(0)), prose_src)
     # P3: acronyms (2+ capitals, optional plural s) must be defined "... (ACR)" before or at first use
