@@ -203,6 +203,32 @@
       "page_limit": null,
       "notes": "Widths are those of the elsarticle 5p two-column layout that authors compile with (\\columnwidth 252 pt = 3.49 in, \\textwidth 522 pt = 7.22 in), so figures need no scaling in LaTeX; the 1.5-column width (5.51 in) is the publisher's 140 mm artwork size. The publisher's own artwork sizes are 90 / 140 / 190 mm; for a single-column preprint ([preprint,12pt]{elsarticle}) figures are scaled to the text width. Highlights (3-5 bullets of at most 85 characters) usually go in a separate file and keywords in the keyword environment. Declarations, the CRediT statement and the data statement are journal-specific: confirm them and any length limits against the journal's guide for authors.",
       "caption_content": "neutral"
+    },
+    "elsevier-cas": {
+      "name": "Elsevier journals with the CAS template (cas-dc), e.g. Computer Networks",
+      "columns": 2,
+      "column_width_in": 3.3,
+      "onehalf_width_in": 5.51,
+      "text_width_in": 6.84,
+      "body_font": "cas-dc 10pt two-column (the journal's own LaTeX template, els-cas-templates)",
+      "class_files": [
+        "cas-dc.cls",
+        "cas-common.sty"
+      ],
+      "font_packages": [],
+      "caption_case": {
+        "figure": "sentence",
+        "table": "sentence"
+      },
+      "required_sections": [],
+      "recommended_sections": [
+        "Declaration of competing interest",
+        "CRediT authorship contribution statement",
+        "Data availability"
+      ],
+      "page_limit": null,
+      "notes": "Widths are those of the cas-dc double-column class after \\maketitle (\\columnwidth 238.25 pt = 3.30 in, \\textwidth 494.51 pt = 6.84 in, \\columnsep 18 pt), so figures need no scaling in LaTeX; the 1.5-column width (5.51 in) is the publisher's 140 mm artwork size. cas-dc redefines figure and figure* with key-value options: write \\begin{figure} (top placement by default) or \\begin{figure}[pos=t], never [t] or [!t], which leaves the position empty and sends every figure to the end of the document. The class itself reports a 123.6 pt overfull box at \\maketitle (also in the official sample); it is harmless. Numbered references: natbib [numbers] with elsarticle-num, or the template's cas-model2-names for author-year journals. Highlights (3-5 bullets of at most 85 characters) usually go in a separate file. Declarations, the CRediT statement and the data statement are journal-specific: confirm them and any length limits against the journal's guide for authors.",
+      "caption_content": "neutral"
     }
   }
 }

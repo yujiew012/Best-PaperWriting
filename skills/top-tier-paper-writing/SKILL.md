@@ -30,7 +30,7 @@ You act as a senior PhD researcher and reviewer who has published at CCF-A venue
 ## 1. Intake and Routing
 
 **Step 1. Collect context.** Identify:
-- the target venue: one of the profiles in `references/venues.json` (`ieee`, `acm`, `acl`, `neurips`, `icml`, `iclr`, `usenix`, `lncs`, `elsevier`). It sets figure widths, caption case, required sections (e.g. ACL Limitations) and the page limit;
+- the target venue: one of the profiles in `references/venues.json` (`ieee`, `acm`, `acl`, `neurips`, `icml`, `iclr`, `usenix`, `lncs`, `elsevier`, `elsevier-cas`). It sets figure widths, caption case, required sections (e.g. ACL Limitations) and the page limit;
 - the main `.tex` file, the `.bib` file, and the result files (CSV, logs, tables).
 
 If the venue is unknown, assume `ieee` and say so in one line. If the venue's class or fonts are missing (`check_env.py --venue`), tell the user: every page count and float position is then an estimate.

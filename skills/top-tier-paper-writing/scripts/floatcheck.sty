@@ -21,7 +21,7 @@
 %% The package only adds whatsits (no boxes, glue or penalties), so the layout
 %% is the same as a normal build.
 \NeedsTeXFormat{LaTeX2e}[2020/10/01]
-\ProvidesPackage{floatcheck}[2026/11/23 v1.0 float placement recorder for check_layout.py]
+\ProvidesPackage{floatcheck}[2026/11/27 v1.1 float placement recorder for check_layout.py]
 \RequirePackage{letltxmacro}
 
 % ---- position primitives (pdfTeX / XeTeX: \pdfsavepos, LuaTeX: \savepos) ----
@@ -112,6 +112,17 @@
       {\number\dimexpr 1in+\hoffset+\evensidemargin\relax}%
       {\number\columnwidth}{\number\columnsep}}%
   \fi}
+% Classes that switch to two columns after the front matter (Elsevier cas-dc calls \twocolumn in
+% \maketitle) are one-column at \begin{document}: record the geometry again at the end, where it is
+% two-column. check_layout.py uses the last \FCgeom record.
+\AddToHook{enddocument}{%
+  \if@filesw\if@twocolumn
+    \immediate\write\@auxout{\string\FCgeom
+      {1}{\if@twoside 1\else 0\fi}%
+      {\number\dimexpr 1in+\hoffset+\oddsidemargin\relax}%
+      {\number\dimexpr 1in+\hoffset+\evensidemargin\relax}%
+      {\number\columnwidth}{\number\columnsep}}%
+  \fi\fi}
 % ---- where the main body ends (for page budgets) ----
 \AddToHook{env/thebibliography/begin}{\FC@write{\string\FCmark{bibliography}}}
 \AddToHook{cmd/printbibliography/before}{\FC@write{\string\FCmark{bibliography}}}
