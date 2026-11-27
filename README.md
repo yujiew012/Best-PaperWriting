@@ -79,7 +79,7 @@ The skill is an executable SOP, loaded in three layers to keep the agent's conte
 | 2. SOP | `SKILL.md` body: ground rules, human approval gates, routing table, 9 branches (Read → Do → Verify), failure recovery, Definition of Done | When the skill triggers |
 | 3. Resources | `references/` (per-section writing rules, figure / layout / bibliography rules, checker codes) and `assets/` (templates, example data) | When a branch needs them |
 
-**Venue-aware.** Pass `--venue` (`ieee`, `acm`, `acl`, `neurips`, `icml`, `iclr`, `usenix`, `lncs`, `elsevier`) and figure widths, caption case, required sections and the page budget follow that venue (`references/venues.json`).
+**Venue-aware.** Pass `--venue` (`ieee`, `acm`, `acl`, `neurips`, `icml`, `iclr`, `usenix`, `lncs`, `elsevier`, `elsevier-cas`) and figure widths, caption case, required sections and the page budget follow that venue (`references/venues.json`).
 
 **Deterministic work goes to scripts.** Statistics, figure sizes, float positions, labels and references, and bibliography fields are computed and checked by scripts. The model interprets the request, chooses the branch, writes and synthesizes. Every branch ends with a script check as its completion criterion. On failure the agent fixes the issue using `references/lint_rules.md` and reruns the check, at most 3 times per issue, then reports to the user.
 
@@ -302,7 +302,7 @@ Skill 按“可执行 SOP”组织，分三层加载，尽量少占 Agent 的上
 | 2. SOP | `SKILL.md` 正文：总规则、人工确认关口、需求分流表、9 个分支（读取 → 执行 → 验证）、故障处理、完成标准（Definition of Done） | 触发 Skill 时 |
 | 3. 资源 | `references/`（按章节拆分的写作规范、图表/排版/参考文献规则、检查代码表）、`assets/`（模板与示例数据） | 进入对应分支时 |
 
-**按会议适配**：传入 `--venue`（`ieee`、`acm`、`acl`、`neurips`、`icml`、`iclr`、`usenix`、`lncs`、`elsevier`），图宽、Caption 大小写、必需章节与页数预算都随会议而定（`references/venues.json`）。
+**按会议适配**：传入 `--venue`（`ieee`、`acm`、`acl`、`neurips`、`icml`、`iclr`、`usenix`、`lncs`、`elsevier`、`elsevier-cas`），图宽、Caption 大小写、必需章节与页数预算都随会议而定（`references/venues.json`）。
 
 **确定性工作交给脚本**：统计量、图表尺寸、浮动体位置、标签与引用、参考文献字段都由脚本计算和检查，模型负责理解意图、选择分支、写作与综合。每个分支都以脚本检查作为完成标准，失败时按 `references/lint_rules.md` 修复并重跑（同一问题最多 3 次，之后向用户报告）。
 
